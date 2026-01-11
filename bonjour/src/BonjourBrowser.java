@@ -6,6 +6,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * <p>Title: Java BonjourBrowser</p>
@@ -38,6 +40,9 @@ public class BonjourBrowser extends JFrame {
     private static final int TREE_PANEL_IPADY = 600;
     private static final int BUTTON_TOP_INSET = 20;
     private static final int BUTTON_IPADY = 15;
+
+    // Timestamp format for log messages
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
     // ========================================================================
     // Instance Fields
@@ -150,7 +155,7 @@ public class BonjourBrowser extends JFrame {
                 browser.reloadServices();
                 browser.setVisible(true);
             } catch (Exception e) {
-                System.err.println("Failed to start BonjourBrowser: " + e.getMessage());
+                logError("Failed to start BonjourBrowser: " + e.getMessage());
                 e.printStackTrace();
                 if (browser != null) {
                     browser.dispose();
@@ -189,6 +194,8 @@ public class BonjourBrowser extends JFrame {
             return;
         }
 
+        logInfo("Reloading services...");
+
         // Stop the previous listener if exists
         BonjourBrowserMultiServiceListener oldListener = multiServiceListener;
         if (oldListener != null) {
@@ -206,8 +213,9 @@ public class BonjourBrowser extends JFrame {
 
         try {
             multiServiceListener = new BonjourBrowserMultiServiceListener(bonjourBrowserImpl);
+            logInfo("Service reload complete");
         } catch (Exception e) {
-            System.err.println("Failed to browse services: " + e.getMessage());
+            logError("Failed to browse services: " + e.getMessage());
             e.printStackTrace();
             JOptionPane.showMessageDialog(this,
                     "Failed to browse services: " + e.getMessage(),
@@ -220,6 +228,8 @@ public class BonjourBrowser extends JFrame {
      * Cleans up all resources before shutdown.
      */
     private void cleanup() {
+        logInfo("Application shutdown - cleaning up...");
+
         // Stop the multi-service listener
         BonjourBrowserMultiServiceListener listener = multiServiceListener;
         if (listener != null) {
@@ -230,7 +240,7 @@ public class BonjourBrowser extends JFrame {
         // Clean up the browser implementation
         bonjourBrowserImpl.cleanup();
 
-        System.out.println("BonjourBrowser cleanup completed");
+        logInfo("Application cleanup completed");
     }
 
     // ========================================================================
@@ -268,6 +278,22 @@ public class BonjourBrowser extends JFrame {
 
         // Start browsing for services of this type in this domain
         bonjourBrowserImpl.subscribe(domainStr, regTypeStr);
+    }
+
+    // ========================================================================
+    // Logging Helpers
+    // ========================================================================
+
+    private static String ts() {
+        return "[" + LocalTime.now().format(TIME_FMT) + "]";
+    }
+
+    private static void logInfo(String msg) {
+        System.out.println(ts() + " INFO  [BonjourBrowser] " + msg);
+    }
+
+    private static void logError(String msg) {
+        System.err.println(ts() + " ERROR [BonjourBrowser] " + msg);
     }
 
     // ========================================================================

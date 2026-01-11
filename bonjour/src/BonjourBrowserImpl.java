@@ -1,5 +1,7 @@
 import javax.swing.*;
 import javax.swing.tree.*;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import com.apple.dnssd.*;
@@ -16,6 +18,9 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
     // ========================================================================
 
     private static final String PLACEHOLDER_TEXT = "Place Holder";
+
+    // Timestamp format for log messages
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
     // ========================================================================
     // Instance Fields
@@ -217,10 +222,12 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
      */
     @Override
     public synchronized boolean subscribe(String domain, String regType) {
+        logInfo("Subscribing to service type: " + regType + " in domain: " + domain);
         try {
             // Cancel any previous service type subscription
             // Only one service type can be actively browsed at a time
             if (browserForSingleServices != null) {
+                logDebug("Stopping previous service browser");
                 browserForSingleServices.stop();
                 browserForSingleServices = null;
             }
@@ -253,9 +260,10 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
             // Start DNSSD browse for services of this type
             // Results will arrive via singleServiceListener callbacks
             browserForSingleServices = DNSSD.browse(0, DNSSD.ALL_INTERFACES, regType, domain, singleServiceListener);
+            logInfo("Subscription started for: " + regType);
 
         } catch (DNSSDException e) {
-            System.err.println("Failed to subscribe to service type " + regType + ": " + e.getMessage());
+            logError("Failed to browse for services: type= " + regType + ", domain= " + domain + " - " + e.getMessage());
             e.printStackTrace();
             return false;
         }
@@ -382,6 +390,26 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
     }
 
     // ========================================================================
+    // Logging Helpers
+    // ========================================================================
+
+    private static String ts() {
+        return "[" + LocalTime.now().format(TIME_FMT) + "]";
+    }
+
+    private static void logInfo(String msg) {
+        System.out.println(ts() + " INFO  [BrowserImpl] " + msg);
+    }
+
+    private static void logDebug(String msg) {
+        System.out.println(ts() + " DEBUG [BrowserImpl] " + msg);
+    }
+
+    private static void logError(String msg) {
+        System.err.println(ts() + " ERROR [BrowserImpl] " + msg);
+    }
+
+    // ========================================================================
     // Resource Management
     // ========================================================================
 
@@ -389,6 +417,8 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
      * Stops the browser for single services and cleans up all resources.
      */
     public synchronized void cleanup() {
+        logInfo("Cleaning up browser resources...");
+
         // Stop active resolvers first
         singleServiceListener.stopAllResolvers();
 
@@ -399,6 +429,8 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
         }
 
         // Clear the node map
+        int nodeCount = nodeMap.size();
         nodeMap.clear();
+        logInfo("Cleanup complete (cleared " + nodeCount + " node mappings)");
     }
 }

@@ -1,3 +1,7 @@
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
 import com.apple.dnssd.*;
@@ -15,6 +19,9 @@ public class BonjourBrowserMultiServiceListener implements BrowseListener {
     // Special mDNS query that returns all registered service TYPES on the network
     // This is a "meta-query" - instead of returning service instances, it returns service types
     private static final String SERVICES_META_QUERY = "_services._dns-sd._udp.";
+
+    // Timestamp format for log messages
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
     // ========================================================================
     // Instance Fields
@@ -41,9 +48,9 @@ public class BonjourBrowserMultiServiceListener implements BrowseListener {
         // Assign guiBrowser BEFORE starting browse to avoid race condition
         // (callbacks can fire immediately on another thread)
         this.guiBrowser = Objects.requireNonNull(browser, "browser must not be null");
-        System.out.println("BonjourBrowserMultiServiceListener Starting");
+        logInfo("Starting meta-query browse for service types...");
         browserForServices = DNSSD.browse(0, DNSSD.ALL_INTERFACES, SERVICES_META_QUERY, "", this);
-        System.out.println("BonjourBrowserMultiServiceListener Running");
+        logInfo("Meta-query browse started successfully");
     }
 
     // ========================================================================
@@ -69,7 +76,7 @@ public class BonjourBrowserMultiServiceListener implements BrowseListener {
      */
     @Override
     public void operationFailed(DNSSDService service, int errorCode) {
-        System.err.println("BonjourBrowserMultiServiceListener browse failed with error code: " + errorCode);
+        logError("Meta-query browse FAILED: type= " + SERVICES_META_QUERY + ", errorCode= " + errorCode);
         if (service != null) {
             service.stop();
         }
@@ -89,16 +96,17 @@ public class BonjourBrowserMultiServiceListener implements BrowseListener {
     public void serviceFound(DNSSDService browser, int flags, int ifIndex,
                              String serviceName, String regType, String domain) {
 
-        System.out.println("ADD flags: " + flags + ", ifIndex: " + ifIndex +
-                ", Name: " + serviceName + ", Type: " + regType +
-                ", Domain: " + domain);
+        logDebug("SERVICE_TYPE_FOUND: flags= " + flags + ", ifIndex= " + ifIndex +
+                " (" + getInterfaceName(ifIndex) + "), name= " + serviceName +
+                ", type= " + regType + ", domain= " + domain);
 
         try {
             BonjourBrowserElement element = createElementFromMetaQuery(
                     browser, flags, ifIndex, serviceName, regType, domain);
             guiBrowser.addGeneralNode(element);
         } catch (Exception e) {
-            System.err.println("Error processing discovered service type: " + e.getMessage());
+            logError("Failed to add service type: name= " + serviceName + ", type= " + regType +
+                    ", domain= " + domain + " - " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -115,15 +123,17 @@ public class BonjourBrowserMultiServiceListener implements BrowseListener {
     @Override
     public void serviceLost(DNSSDService browser, int flags, int ifIndex,
                             String serviceName, String regType, String domain) {
-        System.out.println("REMOVE flags: " + flags + ", ifIndex: " + ifIndex +
-                ", Name: " + serviceName + ", Type: " + regType + ", Domain: " + domain);
+        logDebug("SERVICE_TYPE_LOST: flags= " + flags + ", ifIndex= " + ifIndex +
+                " (" + getInterfaceName(ifIndex) + "), name= " + serviceName +
+                ", type= " + regType + ", domain= " + domain);
 
         try {
             BonjourBrowserElement element = createElementFromMetaQuery(
                     browser, flags, ifIndex, serviceName, regType, domain);
             guiBrowser.removeGeneralNode(element);
         } catch (Exception e) {
-            System.err.println("Error removing service type: " + e.getMessage());
+            logError("Failed to remove service type: name= " + serviceName + ", type= " + regType +
+                    ", domain= " + domain + " - " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -131,6 +141,31 @@ public class BonjourBrowserMultiServiceListener implements BrowseListener {
     // ========================================================================
     // Private Helper Methods
     // ========================================================================
+
+    /**
+     * Gets the name and description of a network interface from its index.
+     * @param ifIndex the interface index (0 means any/all interfaces)
+     * @return the interface name and description, or "any" for index 0
+     */
+    private static String getInterfaceName(int ifIndex) {
+        if (ifIndex == 0) {
+            return "any";
+        }
+        try {
+            NetworkInterface netIf = NetworkInterface.getByIndex(ifIndex);
+            if (netIf != null) {
+                String name = netIf.getName();
+                String desc = netIf.getDisplayName();
+                if (desc != null && !desc.equals(name)) {
+                    return name + " - " + desc;
+                }
+                return name;
+            }
+        } catch (SocketException e) {
+            // Ignore
+        }
+        return "if" + ifIndex;
+    }
 
     /**
      * Creates a BonjourBrowserElement from meta-query callback parameters.
@@ -182,6 +217,26 @@ public class BonjourBrowserMultiServiceListener implements BrowseListener {
     }
 
     // ========================================================================
+    // Logging Helpers
+    // ========================================================================
+
+    private static String ts() {
+        return "[" + LocalTime.now().format(TIME_FMT) + "]";
+    }
+
+    private static void logInfo(String msg) {
+        System.out.println(ts() + " INFO  [MultiServiceListener] " + msg);
+    }
+
+    private static void logDebug(String msg) {
+        System.out.println(ts() + " DEBUG [MultiServiceListener] " + msg);
+    }
+
+    private static void logError(String msg) {
+        System.err.println(ts() + " ERROR [MultiServiceListener] " + msg);
+    }
+
+    // ========================================================================
     // Resource Management
     // ========================================================================
 
@@ -191,9 +246,10 @@ public class BonjourBrowserMultiServiceListener implements BrowseListener {
     public void stop() {
         DNSSDService service = browserForServices;
         if (service != null) {
-            System.out.println("BonjourBrowserMultiServiceListener Stopping");
+            logInfo("Stopping meta-query browse...");
             browserForServices = null;
             service.stop();
+            logInfo("Meta-query browse stopped");
         }
     }
 }

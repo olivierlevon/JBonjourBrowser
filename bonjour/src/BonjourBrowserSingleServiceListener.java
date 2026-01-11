@@ -1,3 +1,7 @@
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,6 +13,13 @@ import com.apple.dnssd.*;
  * Discovers individual service instances and resolves their details.
  */
 public class BonjourBrowserSingleServiceListener implements BrowseListener, ResolveListener {
+
+    // ========================================================================
+    // Constants
+    // ========================================================================
+
+    // Timestamp format for log messages
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
     // ========================================================================
     // Instance Fields
@@ -47,9 +58,24 @@ public class BonjourBrowserSingleServiceListener implements BrowseListener, Reso
      */
     @Override
     public void operationFailed(DNSSDService service, int errorCode) {
-        System.err.println("Browse/Resolve failed with error code: " + errorCode);
+        // Try to find the fullName associated with this service for better error reporting
+        String failedServiceName = null;
+        if (service != null) {
+            for (Map.Entry<String, DNSSDService> entry : activeResolvers.entrySet()) {
+                if (entry.getValue() == service) {
+                    failedServiceName = entry.getKey();
+                    break;
+                }
+            }
+        }
 
-        // Remove failed resolver from tracking map (find by value since we don't have fullName)
+        if (failedServiceName != null) {
+            logError("Browse/Resolve FAILED: fullName= " + failedServiceName + ", errorCode= " + errorCode);
+        } else {
+            logError("Browse/Resolve FAILED: errorCode= " + errorCode);
+        }
+
+        // Remove failed resolver from tracking map
         if (service != null) {
             activeResolvers.entrySet().removeIf(entry -> entry.getValue() == service);
             service.stop();
@@ -69,9 +95,9 @@ public class BonjourBrowserSingleServiceListener implements BrowseListener, Reso
     public void serviceFound(DNSSDService browser, int flags, int ifIndex,
                              String serviceName, String regType, String domain) {
 
-        System.out.println("ADD flags: " + flags + ", ifIndex: " + ifIndex +
-                ", Name: " + serviceName + ", Type: " + regType +
-                ", Domain: " + domain);
+        logDebug("SERVICE_FOUND: flags= " + flags + ", ifIndex= " + ifIndex +
+                " (" + getInterfaceName(ifIndex) + "), name= " + serviceName +
+                ", type= " + regType + ", domain= " + domain);
 
         String fullName = null;
         try {
@@ -94,7 +120,8 @@ public class BonjourBrowserSingleServiceListener implements BrowseListener, Reso
                     browser, flags, ifIndex, fullName, serviceName, regType, domain));
 
         } catch (DNSSDException e) {
-            System.err.println("Error resolving service " + serviceName + ": " + e.getMessage());
+            logError("Failed to resolve service: name= " + serviceName + ", type= " + regType +
+                    ", domain= " + domain + " - " + e.getMessage());
             e.printStackTrace();
 
             // Clean up partial state if resolve failed after constructing fullName
@@ -116,8 +143,9 @@ public class BonjourBrowserSingleServiceListener implements BrowseListener, Reso
     @Override
     public void serviceLost(DNSSDService browser, int flags, int ifIndex,
                             String serviceName, String regType, String domain) {
-        System.out.println("REMOVE flags: " + flags + ", ifIndex: " + ifIndex +
-                ", Name: " + serviceName + ", Type: " + regType + ", Domain: " + domain);
+        logDebug("SERVICE_LOST: flags= " + flags + ", ifIndex= " + ifIndex +
+                " (" + getInterfaceName(ifIndex) + "), name= " + serviceName +
+                ", type= " + regType + ", domain= " + domain);
 
         try {
             String fullName = DNSSD.constructFullName(serviceName, regType, domain);
@@ -131,7 +159,8 @@ public class BonjourBrowserSingleServiceListener implements BrowseListener, Reso
             guiBrowser.removeNode(new BonjourBrowserElement(
                     browser, flags, ifIndex, fullName, serviceName, regType, domain));
         } catch (DNSSDException e) {
-            System.err.println("Error removing service " + serviceName + ": " + e.getMessage());
+            logError("Failed to remove service: name= " + serviceName + ", type= " + regType +
+                    ", domain= " + domain + " - " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -149,9 +178,10 @@ public class BonjourBrowserSingleServiceListener implements BrowseListener, Reso
     @Override
     public void serviceResolved(DNSSDService resolver, int flags, int ifIndex, String fullName,
                                 String hostName, int port, TXTRecord txtRecord) {
-        System.out.println("RESOLVE flags: " + flags + ", ifIndex: " + ifIndex +
-                ", Name: " + fullName + ", Hostname: " + hostName + ", port: " +
-                port + ", TextRecord: " + txtRecord);
+        logDebug("SERVICE_RESOLVED: flags= " + flags + ", ifIndex= " + ifIndex +
+                " (" + getInterfaceName(ifIndex) + "), fullName= " + fullName +
+                ", hostname= " + hostName + ", port= " + port +
+                ", txtRecord= " + (txtRecord != null ? txtRecord.size() + " entries" : "null"));
 
         // Update the tree node with resolved information (hostname:port and TXT records)
         // This adds child nodes under the service name node
@@ -165,6 +195,35 @@ public class BonjourBrowserSingleServiceListener implements BrowseListener, Reso
         // Stop the resolver - we only need one-shot resolution
         // Keeping it running would cause repeated callbacks as the service re-announces
         resolver.stop();
+    }
+
+    // ========================================================================
+    // Private Helper Methods
+    // ========================================================================
+
+    /**
+     * Gets the name and description of a network interface from its index.
+     * @param ifIndex the interface index (0 means any/all interfaces)
+     * @return the interface name and description, or "any" for index 0
+     */
+    private static String getInterfaceName(int ifIndex) {
+        if (ifIndex == 0) {
+            return "any";
+        }
+        try {
+            NetworkInterface netIf = NetworkInterface.getByIndex(ifIndex);
+            if (netIf != null) {
+                String name = netIf.getName();
+                String desc = netIf.getDisplayName();
+                if (desc != null && !desc.equals(name)) {
+                    return name + " - " + desc;
+                }
+                return name;
+            }
+        } catch (SocketException e) {
+            // Ignore
+        }
+        return "if" + ifIndex;
     }
 
     // ========================================================================
@@ -188,6 +247,30 @@ public class BonjourBrowserSingleServiceListener implements BrowseListener, Reso
     }
 
     // ========================================================================
+    // Logging Helpers
+    // ========================================================================
+
+    private static String ts() {
+        return "[" + LocalTime.now().format(TIME_FMT) + "]";
+    }
+
+    private static void logInfo(String msg) {
+        System.out.println(ts() + " INFO  [SingleServiceListener] " + msg);
+    }
+
+    private static void logDebug(String msg) {
+        System.out.println(ts() + " DEBUG [SingleServiceListener] " + msg);
+    }
+
+    private static void logError(String msg) {
+        System.err.println(ts() + " ERROR [SingleServiceListener] " + msg);
+    }
+
+    private static void logWarn(String msg) {
+        System.err.println(ts() + " WARN  [SingleServiceListener] " + msg);
+    }
+
+    // ========================================================================
     // Resource Management
     // ========================================================================
 
@@ -195,9 +278,14 @@ public class BonjourBrowserSingleServiceListener implements BrowseListener, Reso
      * Stops all active resolvers and releases resources.
      */
     public void stopAllResolvers() {
-        for (DNSSDService resolver : activeResolvers.values()) {
-            resolver.stop();
+        int count = activeResolvers.size();
+        if (count > 0) {
+            logInfo("Stopping " + count + " active resolver(s)...");
+            for (DNSSDService resolver : activeResolvers.values()) {
+                resolver.stop();
+            }
+            activeResolvers.clear();
+            logInfo("All resolvers stopped");
         }
-        activeResolvers.clear();
     }
 }
