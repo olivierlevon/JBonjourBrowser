@@ -1,0 +1,46 @@
+# AppVeyor CI configuration for JBonjourBrowser
+# https://www.appveyor.com/docs/appveyor-yml/
+
+version: 2.0.0.{build}
+
+image: Visual Studio 2022
+
+environment:
+  JAVA_HOME: C:\Program Files\Java\jdk21
+
+install:
+  # Display Java version
+  - java -version
+  - javac -version
+
+build_script:
+  - cd bonjour
+  # Clean and compile
+  - ant -f nbproject/build-impl.xml clean compile
+  # Build JAR
+  - ant -f nbproject/build-impl.xml jar
+
+after_build:
+  # Generate Javadoc
+  - ant -f nbproject/build-impl.xml javadoc
+
+artifacts:
+  - path: bonjour\dist\JBonjourBrowser.jar
+    name: JBonjourBrowser
+  - path: bonjour\dist\jars\*.jar
+    name: Dependencies
+  - path: bonjour\dist\javadoc
+    name: Javadoc
+
+# No automated tests yet
+test: off
+
+# Cache Ant downloads
+cache:
+  - C:\Users\appveyor\.ant
+
+# Notifications (optional)
+notifications:
+  - provider: Email
+    on_build_success: false
+    on_build_failure: true

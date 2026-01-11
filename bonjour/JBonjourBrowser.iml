@@ -12,5 +12,6 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="dns_sd" level="project" />
+    <orderEntry type="library" name="flatlaf" level="project" />
   </component>
 </module>

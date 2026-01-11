@@ -1,5 +1,7 @@
 # Java Bonjour Browser
 
+[![Build status](https://ci.appveyor.com/api/projects/status/github/olivierlevon/JBonjourBrowser?branch=main&svg=true)](https://ci.appveyor.com/project/olivierlevon/JBonjourBrowser)
+
 A cross-platform Java Swing application for browsing and displaying Bonjour/Zeroconf services on a local network.
 
 ## Overview
@@ -12,8 +14,14 @@ Java Bonjour Browser provides functionality similar to the native Mac OS X Bonjo
 - **Tree Visualization**: Hierarchical display of domains, service types, and instances
 - **Service Resolution**: Shows hostname, port, and TXT record details for each service
 - **Real-time Updates**: Services appear/disappear as they come online/offline
-- **Cross-platform**: Runs on any platform with Java 8+ and Bonjour support
+- **Cross-platform**: Runs on any platform with Java 21+ and Bonjour support
 - **Reload Button**: Manually refresh the service list
+- **Alphabetical Sorting**: All nodes sorted case-insensitively
+- **Copy to Clipboard**: Ctrl+C or right-click menu to copy selected node text
+- **UTF-8 Support**: Full Unicode support for service names and TXT records
+- **Binary TXT Display**: Binary data shown as hex dump with ASCII representation
+- **Modern UI**: FlatLaf Look & Feel for improved appearance
+- **Help Menu**: Online documentation, update checker, and about dialog
 
 ## Screenshots
 
@@ -35,7 +43,7 @@ Bonjour Service Browser
 
 ### Java Development Kit (JDK)
 
-Any JDK version 8 or later:
+**Java 21 or later required** (Java 25 recommended for best UTF-8 support):
 
 | JDK | Download |
 |-----|----------|
@@ -71,7 +79,8 @@ bonjour/
 │   └── TestRegister.java             # Test utility for registering services
 │
 ├── jars/                             # Dependencies
-│   └── dns_sd.jar                    # Apple DNSSD/Bonjour Java API
+│   ├── dns_sd.jar                    # Apple DNSSD/Bonjour Java API
+│   └── flatlaf-3.4.jar               # FlatLaf Look & Feel
 │
 ├── lib/                              # Native libraries
 │   └── (platform-specific files)     # DNSSD native bindings
@@ -135,6 +144,24 @@ java -Djava.library.path=lib -cp "build/classes;jars/dns_sd.jar" BonjourBrowser
 # Run (macOS/Linux)
 java -Djava.library.path=lib -cp "build/classes:jars/dns_sd.jar" BonjourBrowser
 ```
+
+## Command Line Options
+
+```bash
+# Run with debug logging enabled
+java ... BonjourBrowser -debug
+```
+
+| Option | Description |
+|--------|-------------|
+| `-debug` | Enable verbose debug logging to console |
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+C` | Copy selected node text to clipboard |
+| Right-click | Context menu with Copy option |
 
 ## Run Configurations
 
@@ -228,6 +255,7 @@ The application is designed to be thread-safe:
 | Library | Purpose |
 |---------|---------|
 | `dns_sd.jar` | Apple DNSSD/Bonjour Java API for mDNS service discovery |
+| `flatlaf-3.4.jar` | Modern cross-platform Look & Feel with improved font rendering |
 
 **Note**: The native DNSSD library must be available on the system (provided by Bonjour/Avahi).
 
@@ -268,6 +296,7 @@ Internet Real Time Lab, Columbia University (2006)
 
 ## Additional Resources
 
+- [CHANGELOG](CHANGELOG.md) - Version history and changes
 - [Project Report](report/project.htm) - Detailed project documentation
 - [JavaDoc](bonjour/javadoc/) - Generated API documentation
 - [Apple DNSSD Documentation](https://developer.apple.com/documentation/dnssd)

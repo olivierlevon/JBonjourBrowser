@@ -359,7 +359,10 @@ public class BonjourBrowserMultiServiceListener implements BrowseListener, Domai
         }
     }
 
-    /** Enable or disable debug logging */
+    /**
+     * Enable or disable debug logging.
+     * @param enabled true to enable debug logging
+     */
     public static void setDebugEnabled(boolean enabled) {
         debugEnabled = enabled;
     }

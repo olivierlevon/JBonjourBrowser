@@ -113,9 +113,12 @@ public class BonjourBrowserSingleServiceListener implements BrowseListener, Reso
                 return;
             }
 
-            logDebug("SERVICE_FOUND: flags= " + flags + ", ifIndex= " + ifIndex +
-                    " (" + getInterfaceName(ifIndex) + "), name= " + serviceName +
-                    ", type= " + regType + ", domain= " + domain);
+            // Log at INFO level since service discovery is an important event
+            logInfo("SERVICE_FOUND: name= " + serviceName + ", type= " + regType + ", domain= " + domain);
+            // Debug: show encoding details
+            logEncodingDebug("serviceName", serviceName);
+            logDebug("SERVICE_FOUND details: flags= " + flags + ", ifIndex= " + ifIndex +
+                    " (" + getInterfaceName(ifIndex) + ")");
 
             // Immediately start resolving to get hostname, port, and TXT record
             // Resolution is async - results arrive in serviceResolved() callback
@@ -155,9 +158,10 @@ public class BonjourBrowserSingleServiceListener implements BrowseListener, Reso
     @Override
     public void serviceLost(DNSSDService browser, int flags, int ifIndex,
                             String serviceName, String regType, String domain) {
-        logDebug("SERVICE_LOST: flags= " + flags + ", ifIndex= " + ifIndex +
-                " (" + getInterfaceName(ifIndex) + "), name= " + serviceName +
-                ", type= " + regType + ", domain= " + domain);
+        // Log at INFO level since service removal is an important event
+        logInfo("SERVICE_LOST: name= " + serviceName + ", type= " + regType + ", domain= " + domain);
+        logDebug("SERVICE_LOST details: flags= " + flags + ", ifIndex= " + ifIndex +
+                " (" + getInterfaceName(ifIndex) + ")");
 
         try {
             String fullName = DNSSD.constructFullName(serviceName, regType, domain);
@@ -279,7 +283,10 @@ public class BonjourBrowserSingleServiceListener implements BrowseListener, Reso
         }
     }
 
-    /** Enable or disable debug logging */
+    /**
+     * Enable or disable debug logging.
+     * @param enabled true to enable debug logging
+     */
     public static void setDebugEnabled(boolean enabled) {
         debugEnabled = enabled;
     }
@@ -288,8 +295,40 @@ public class BonjourBrowserSingleServiceListener implements BrowseListener, Reso
         System.err.println(ts() + " ERROR [SingleServiceListener] " + msg);
     }
 
-    private static void logWarn(String msg) {
-        System.err.println(ts() + " WARN  [SingleServiceListener] " + msg);
+    /**
+     * Logs encoding debug info for a string - shows bytes, codepoints, and char details.
+     * Only logs if debug is enabled.
+     * @param label the label for this debug output
+     * @param value the string value to analyze
+     */
+    private static void logEncodingDebug(String label, String value) {
+        if (!debugEnabled) {
+            return;
+        }
+
+        if (value == null) {
+            System.out.println(ts() + " ENCODING [" + label + "] null");
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(ts()).append(" ENCODING [").append(label).append("] ");
+        sb.append("length=").append(value.length()).append(", ");
+
+        // Show codepoints
+        sb.append("codepoints=[");
+        value.codePoints().forEach(cp -> sb.append(String.format("U+%04X ", cp)));
+        sb.append("], ");
+
+        // Show UTF-8 bytes
+        byte[] utf8 = value.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        sb.append("UTF-8 bytes=[");
+        for (byte b : utf8) {
+            sb.append(String.format("%02X ", b & 0xFF));
+        }
+        sb.append("]");
+
+        System.out.println(sb.toString());
     }
 
     // ========================================================================

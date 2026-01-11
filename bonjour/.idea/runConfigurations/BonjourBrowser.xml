@@ -2,7 +2,7 @@
   <configuration default="false" name="BonjourBrowser" type="Application" factoryName="Application">
     <option name="MAIN_CLASS_NAME" value="BonjourBrowser" />
     <module name="JBonjourBrowser" />
-    <option name="VM_PARAMETERS" value="-Djava.library.path=$PROJECT_DIR$/lib" />
+    <option name="VM_PARAMETERS" value="-Djava.library.path=$PROJECT_DIR$/lib -Dfile.encoding=UTF-8 --enable-native-access=ALL-UNNAMED" />
     <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
     <envs>
       <env name="PATH" value="$PROJECT_DIR$/lib;$PATH$" />
