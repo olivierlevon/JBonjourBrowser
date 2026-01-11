@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    NetBeans Build Implementation for BonjourBrowser
+    Auto-generated style build file for J2SE projects
+-->
+<project xmlns:j2seproject1="http://www.netbeans.org/ns/j2se-project/1"
+         xmlns:j2seproject3="http://www.netbeans.org/ns/j2se-project/3"
+         xmlns:jaxrpc="http://www.netbeans.org/ns/j2se-project/jax-rpc"
+         basedir=".."
+         default="default"
+         name="BonjourBrowser-impl">
+
+    <!-- Property definitions -->
+    <property file="nbproject/project.properties"/>
+
+    <property name="build.dir" value="build"/>
+    <property name="build.classes.dir" value="${build.dir}/classes"/>
+    <property name="dist.dir" value="dist"/>
+    <property name="dist.jar" value="${dist.dir}/BonjourBrowser.jar"/>
+    <property name="src.dir" value="src"/>
+    <property name="javac.source" value="1.8"/>
+    <property name="javac.target" value="1.8"/>
+    <property name="main.class" value="BonjourBrowser"/>
+
+    <!-- Classpath definitions -->
+    <path id="compile.classpath">
+        <pathelement location="jars/dns_sd.jar"/>
+        <pathelement location="jars/jbcl.jar"/>
+    </path>
+
+    <path id="run.classpath">
+        <path refid="compile.classpath"/>
+        <pathelement location="${build.classes.dir}"/>
+    </path>
+
+    <!-- Default target -->
+    <target name="default" depends="jar" description="Build the project"/>
+
+    <!-- Initialize build directories -->
+    <target name="init">
+        <mkdir dir="${build.dir}"/>
+        <mkdir dir="${build.classes.dir}"/>
+        <mkdir dir="${dist.dir}"/>
+    </target>
+
+    <!-- Compile source files -->
+    <target name="compile" depends="init" description="Compile source code">
+        <javac srcdir="${src.dir}"
+               destdir="${build.classes.dir}"
+               source="${javac.source}"
+               target="${javac.target}"
+               includeantruntime="false"
+               debug="true"
+               deprecation="false">
+            <classpath refid="compile.classpath"/>
+        </javac>
+        <!-- Copy resources -->
+        <copy todir="${build.classes.dir}">
+            <fileset dir="${src.dir}" excludes="**/*.java"/>
+        </copy>
+        <copy todir="${build.classes.dir}/resources" failonerror="false">
+            <fileset dir="resources"/>
+        </copy>
+    </target>
+
+    <!-- Build JAR file -->
+    <target name="jar" depends="compile" description="Build JAR file">
+        <jar destfile="${dist.jar}" basedir="${build.classes.dir}">
+            <manifest>
+                <attribute name="Main-Class" value="${main.class}"/>
+                <attribute name="Class-Path" value="jars/dns_sd.jar jars/jbcl.jar"/>
+            </manifest>
+        </jar>
+        <!-- Copy dependencies to dist -->
+        <mkdir dir="${dist.dir}/jars"/>
+        <copy todir="${dist.dir}/jars">
+            <fileset dir="jars" includes="*.jar"/>
+        </copy>
+    </target>
+
+    <!-- Run the application -->
+    <target name="run" depends="compile" description="Run the application">
+        <java classname="${main.class}" fork="true">
+            <classpath refid="run.classpath"/>
+        </java>
+    </target>
+
+    <!-- Generate Javadoc -->
+    <target name="javadoc" depends="init" description="Generate Javadoc">
+        <mkdir dir="${dist.dir}/javadoc"/>
+        <javadoc sourcepath="${src.dir}"
+                 destdir="${dist.dir}/javadoc"
+                 author="true"
+                 version="true"
+                 use="true"
+                 windowtitle="BonjourBrowser API">
+            <classpath refid="compile.classpath"/>
+            <doctitle><![CDATA[<h1>BonjourBrowser</h1>]]></doctitle>
+            <bottom><![CDATA[<i>Copyright &#169; 2006 Internet Real Time Lab, Columbia University</i>]]></bottom>
+        </javadoc>
+    </target>
+
+    <!-- Clean build products -->
+    <target name="clean" description="Clean build products">
+        <delete dir="${build.dir}"/>
+        <delete dir="${dist.dir}"/>
+    </target>
+
+    <!-- Rebuild from scratch -->
+    <target name="rebuild" depends="clean,jar" description="Clean and rebuild"/>
+
+    <!-- Run TestRegister -->
+    <target name="run-test-register" depends="compile" description="Run TestRegister utility">
+        <java classname="TestRegister" fork="true">
+            <classpath refid="run.classpath"/>
+        </java>
+    </target>
+
+</project>

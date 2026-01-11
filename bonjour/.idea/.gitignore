@@ -1,0 +1,16 @@
+# IntelliJ workspace files (user-specific)
+workspace.xml
+tasks.xml
+usage.statistics.xml
+dictionaries
+shelf
+
+# Editor-based HTTP client
+httpRequests
+
+# Datasource local storage
+dataSources/
+dataSources.local.xml
+
+# AWS User-specific
+.aws-sam
