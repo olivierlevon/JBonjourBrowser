@@ -1,9 +1,12 @@
 import javax.swing.*;
 import javax.swing.tree.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import com.apple.dnssd.*;
 
 /**
@@ -21,6 +24,9 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
 
     // Timestamp format for log messages
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
+
+    // Debug logging enable flag (can be toggled at runtime)
+    private static volatile boolean debugEnabled = false;
 
     // ========================================================================
     // Instance Fields
@@ -113,6 +119,47 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
         }
 
         return existingNode;
+    }
+
+    /**
+     * Formats a TXT record value for display.
+     * If the value is printable text, returns it as a UTF-8 string.
+     * If it contains binary data, returns a hex representation.
+     * @param value the raw byte array value (may be null)
+     * @return formatted string for display
+     */
+    private String formatTxtValue(byte[] value) {
+        if (value == null || value.length == 0) {
+            return "";
+        }
+
+        // Check if bytes contain binary control characters (0x00-0x1F except tab/newline/return, and 0x7F)
+        // High bytes (0x80-0xFF) are allowed as they're valid UTF-8
+        boolean hasBinaryData = false;
+        for (byte b : value) {
+            int unsigned = b & 0xFF;
+            // Control characters (except whitespace) and DEL indicate binary data
+            if (unsigned < 32 && unsigned != '\t' && unsigned != '\n' && unsigned != '\r') {
+                hasBinaryData = true;
+                break;
+            }
+            if (unsigned == 0x7F) {  // DEL character
+                hasBinaryData = true;
+                break;
+            }
+        }
+
+        if (!hasBinaryData) {
+            // Decode as UTF-8 string
+            return new String(value, java.nio.charset.StandardCharsets.UTF_8);
+        }
+
+        // Display as hex for binary data
+        StringBuilder hex = new StringBuilder("0x");
+        for (byte b : value) {
+            hex.append(String.format("%02X", b & 0xFF));
+        }
+        return hex.toString();
     }
 
     /**
@@ -247,13 +294,18 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
                 // Remove all children (old services + placeholder) from the service type node
                 // Collect first, then remove to avoid ConcurrentModificationException
                 if (nregtype != null) {
+                    int childCount = nregtype.getChildCount();
+                    logDebug("subscribe EDT: removing " + childCount + " children from " + regType + " in " + domain);
                     List<DefaultMutableTreeNode> childrenToRemove = new ArrayList<>();
                     for (int i = 0; i < nregtype.getChildCount(); i++) {
                         childrenToRemove.add((DefaultMutableTreeNode) nregtype.getChildAt(i));
                     }
                     for (DefaultMutableTreeNode child : childrenToRemove) {
+                        logDebug("subscribe EDT: removing child: " + child.getUserObject());
                         treeModel.removeNodeFromParent(child);
                     }
+                } else {
+                    logWarn("subscribe EDT: regtype node not found for " + regType + " in " + domain);
                 }
             });
 
@@ -287,7 +339,12 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
         final String serviceName = element.getName();
         final String fullName = element.getFullName();
 
+        logDebug("addNode: fullName= " + fullName + ", serviceName= " + serviceName +
+                ", regType= " + regTypeName + ", domain= " + domainName);
+
         runOnEDT(() -> {
+            logDebug("addNode EDT: processing fullName= " + fullName);
+
             DefaultMutableTreeNode root = (DefaultMutableTreeNode) browser.getTree().getModel().getRoot();
             DefaultTreeModel treeModel = (DefaultTreeModel) browser.getTree().getModel();
 
@@ -299,6 +356,7 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
             ignoreTreeExpansion = false;
 
             nodeMap.put(fullName, name);
+            logDebug("addNode EDT: stored in nodeMap fullName= " + fullName);
         });
 
         return true;
@@ -358,18 +416,19 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
         final int port = element.getPort();
         final TXTRecord txtRecord = element.getTxtRecord();
 
-        // Check if node exists (ConcurrentHashMap is thread-safe)
-        if (!nodeMap.containsKey(fullName)) {
-            return false;
-        }
+        logDebug("resolveNode: fullName= " + fullName + ", hostname= " + hostname + ", port= " + port);
 
+        // Schedule resolve on EDT - this ensures it runs AFTER any pending addNode EDT work
         runOnEDT(() -> {
             DefaultTreeModel treeModel = (DefaultTreeModel) browser.getTree().getModel();
             DefaultMutableTreeNode name = nodeMap.get(fullName);
 
             if (name == null) {
+                logWarn("resolveNode EDT: node not found for fullName= " + fullName);
                 return;
             }
+
+            logDebug("resolveNode EDT: adding hostname:port= " + hostname + ":" + port + " to node= " + name);
 
             String hostPort = hostname + ":" + port;
             addNodeInternal(hostPort, name, treeModel, false);
@@ -377,9 +436,8 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
             if (txtRecord != null) {
                 for (int i = 0; i < txtRecord.size(); i++) {
                     String key = txtRecord.getKey(i);
-                    String value = txtRecord.getValueAsString(i);
                     if (key != null && !key.isEmpty()) {
-                        String displayValue = (value != null) ? value : "";
+                        String displayValue = formatTxtValue(txtRecord.getValue(i));
                         addNodeInternal(key + "=" + displayValue, name, treeModel, false);
                     }
                 }
@@ -402,7 +460,18 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
     }
 
     private static void logDebug(String msg) {
-        System.out.println(ts() + " DEBUG [BrowserImpl] " + msg);
+        if (debugEnabled) {
+            System.out.println(ts() + " DEBUG [BrowserImpl] " + msg);
+        }
+    }
+
+    /** Enable or disable debug logging */
+    public static void setDebugEnabled(boolean enabled) {
+        debugEnabled = enabled;
+    }
+
+    private static void logWarn(String msg) {
+        System.err.println(ts() + " WARN  [BrowserImpl] " + msg);
     }
 
     private static void logError(String msg) {

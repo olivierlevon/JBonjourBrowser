@@ -21,6 +21,9 @@ public class BonjourBrowserSingleServiceListener implements BrowseListener, Reso
     // Timestamp format for log messages
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
+    // Debug logging enable flag
+    private static volatile boolean debugEnabled = false;
+
     // ========================================================================
     // Instance Fields
     // ========================================================================
@@ -32,6 +35,9 @@ public class BonjourBrowserSingleServiceListener implements BrowseListener, Reso
     // Used to cancel resolvers when services disappear or on cleanup
     // ConcurrentHashMap for thread-safe access from multiple DNSSD callback threads
     private final Map<String, DNSSDService> activeResolvers = new ConcurrentHashMap<>();
+
+    // Tracks seen services to filter duplicates (same service on different interfaces)
+    private final java.util.Set<String> seenServices = ConcurrentHashMap.newKeySet();
 
     // ========================================================================
     // Constructor
@@ -95,15 +101,21 @@ public class BonjourBrowserSingleServiceListener implements BrowseListener, Reso
     public void serviceFound(DNSSDService browser, int flags, int ifIndex,
                              String serviceName, String regType, String domain) {
 
-        logDebug("SERVICE_FOUND: flags= " + flags + ", ifIndex= " + ifIndex +
-                " (" + getInterfaceName(ifIndex) + "), name= " + serviceName +
-                ", type= " + regType + ", domain= " + domain);
-
         String fullName = null;
         try {
             // Construct the unique identifier for this service instance
             // Format: "ServiceName._type._protocol.domain." (e.g., "MyPrinter._ipp._tcp.local.")
             fullName = DNSSD.constructFullName(serviceName, regType, domain);
+
+            // Filter duplicates - same service can be announced on multiple interfaces
+            if (!seenServices.add(fullName)) {
+                logDebug("SERVICE_FOUND (duplicate ignored): " + serviceName + " on ifIndex= " + ifIndex);
+                return;
+            }
+
+            logDebug("SERVICE_FOUND: flags= " + flags + ", ifIndex= " + ifIndex +
+                    " (" + getInterfaceName(ifIndex) + "), name= " + serviceName +
+                    ", type= " + regType + ", domain= " + domain);
 
             // Immediately start resolving to get hostname, port, and TXT record
             // Resolution is async - results arrive in serviceResolved() callback
@@ -149,6 +161,9 @@ public class BonjourBrowserSingleServiceListener implements BrowseListener, Reso
 
         try {
             String fullName = DNSSD.constructFullName(serviceName, regType, domain);
+
+            // Remove from seen services tracking
+            seenServices.remove(fullName);
 
             // Stop and remove the resolver for this service
             DNSSDService resolver = activeResolvers.remove(fullName);
@@ -259,7 +274,14 @@ public class BonjourBrowserSingleServiceListener implements BrowseListener, Reso
     }
 
     private static void logDebug(String msg) {
-        System.out.println(ts() + " DEBUG [SingleServiceListener] " + msg);
+        if (debugEnabled) {
+            System.out.println(ts() + " DEBUG [SingleServiceListener] " + msg);
+        }
+    }
+
+    /** Enable or disable debug logging */
+    public static void setDebugEnabled(boolean enabled) {
+        debugEnabled = enabled;
     }
 
     private static void logError(String msg) {
@@ -276,6 +298,7 @@ public class BonjourBrowserSingleServiceListener implements BrowseListener, Reso
 
     /**
      * Stops all active resolvers and releases resources.
+     * Also clears the seen services set to allow fresh discovery on next subscription.
      */
     public void stopAllResolvers() {
         int count = activeResolvers.size();
@@ -287,5 +310,7 @@ public class BonjourBrowserSingleServiceListener implements BrowseListener, Reso
             activeResolvers.clear();
             logInfo("All resolvers stopped");
         }
+        // Clear seen services to allow fresh discovery on next subscription
+        seenServices.clear();
     }
 }

@@ -44,6 +44,9 @@ public class BonjourBrowser extends JFrame {
     // Timestamp format for log messages
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
+    // Debug logging enable flag
+    private static volatile boolean debugEnabled = false;
+
     // ========================================================================
     // Instance Fields
     // ========================================================================
@@ -142,9 +145,17 @@ public class BonjourBrowser extends JFrame {
      * Main method of this class.<br>
      * Creates {@link BonjourBrowser} class<br>
      * Implements BonjourBrowser by {@link BonjourBrowserImpl} class.<br>
-     * @param args command line arguments
+     * @param args command line arguments (-debug to enable debug logging)
      */
     public static void main(String[] args) {
+        // Check for -debug flag
+        for (String arg : args) {
+            if ("-debug".equalsIgnoreCase(arg)) {
+                setDebugEnabled(true);
+                System.out.println("Debug logging enabled");
+            }
+        }
+
         // All Swing operations must be on the Event Dispatch Thread
         SwingUtilities.invokeLater(() -> {
             BonjourBrowser browser = null;
@@ -166,6 +177,17 @@ public class BonjourBrowser extends JFrame {
                         JOptionPane.ERROR_MESSAGE);
             }
         });
+    }
+
+    /**
+     * Enables or disables debug logging globally for all classes.
+     * @param enabled true to enable debug logging
+     */
+    public static void setDebugEnabled(boolean enabled) {
+        debugEnabled = enabled;
+        BonjourBrowserImpl.setDebugEnabled(enabled);
+        BonjourBrowserMultiServiceListener.setDebugEnabled(enabled);
+        BonjourBrowserSingleServiceListener.setDebugEnabled(enabled);
     }
 
     // ========================================================================
