@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-    BonjourBrowser - Ant Build File
+    JBonjourBrowser - Ant Build File
     Converted from JBuilder project for NetBeans IDE
 
     This build file imports the NetBeans-generated build-impl.xml.
     You can add custom targets here.
 -->
-<project name="BonjourBrowser" default="default" basedir=".">
-    <description>Builds, tests, and runs the BonjourBrowser project.</description>
+<project name="JBonjourBrowser" default="default" basedir=".">
+    <description>Builds, tests, and runs the JBonjourBrowser project.</description>
 
     <!-- Import NetBeans build implementation -->
     <import file="nbproject/build-impl.xml"/>

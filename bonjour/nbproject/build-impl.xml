@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-    NetBeans Build Implementation for BonjourBrowser
+    NetBeans Build Implementation for JBonjourBrowser
     Auto-generated style build file for J2SE projects
 -->
 <project xmlns:j2seproject1="http://www.netbeans.org/ns/j2se-project/1"
@@ -8,7 +8,7 @@
          xmlns:jaxrpc="http://www.netbeans.org/ns/j2se-project/jax-rpc"
          basedir=".."
          default="default"
-         name="BonjourBrowser-impl">
+         name="JBonjourBrowser-impl">
 
     <!-- Property definitions -->
     <property file="nbproject/project.properties"/>
@@ -16,7 +16,7 @@
     <property name="build.dir" value="build"/>
     <property name="build.classes.dir" value="${build.dir}/classes"/>
     <property name="dist.dir" value="dist"/>
-    <property name="dist.jar" value="${dist.dir}/BonjourBrowser.jar"/>
+    <property name="dist.jar" value="${dist.dir}/JBonjourBrowser.jar"/>
     <property name="src.dir" value="src"/>
     <property name="javac.source" value="1.8"/>
     <property name="javac.target" value="1.8"/>
@@ -82,6 +82,8 @@
     <target name="run" depends="compile" description="Run the application">
         <java classname="${main.class}" fork="true">
             <classpath refid="run.classpath"/>
+            <jvmarg value="-Djava.library.path=lib"/>
+            <env key="PATH" path="lib;${env.PATH}"/>
         </java>
     </target>
 
@@ -93,9 +95,9 @@
                  author="true"
                  version="true"
                  use="true"
-                 windowtitle="BonjourBrowser API">
+                 windowtitle="JBonjourBrowser API">
             <classpath refid="compile.classpath"/>
-            <doctitle><![CDATA[<h1>BonjourBrowser</h1>]]></doctitle>
+            <doctitle><![CDATA[<h1>JBonjourBrowser</h1>]]></doctitle>
             <bottom><![CDATA[<i>Copyright &#169; 2006 Internet Real Time Lab, Columbia University</i>]]></bottom>
         </javadoc>
     </target>
@@ -113,6 +115,8 @@
     <target name="run-test-register" depends="compile" description="Run TestRegister utility">
         <java classname="TestRegister" fork="true">
             <classpath refid="run.classpath"/>
+            <jvmarg value="-Djava.library.path=lib"/>
+            <env key="PATH" path="lib;${env.PATH}"/>
         </java>
     </target>
 
