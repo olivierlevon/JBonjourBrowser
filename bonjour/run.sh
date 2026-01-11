@@ -7,4 +7,4 @@ export LD_LIBRARY_PATH="$SCRIPT_DIR/lib:$LD_LIBRARY_PATH"
 export PATH="$SCRIPT_DIR/lib:$PATH"
 
 cd "$SCRIPT_DIR"
-java -Djava.library.path=lib -cp "build/classes:jars/dns_sd.jar:jars/jbcl.jar" BonjourBrowser
+java -Djava.library.path=lib -cp "build/classes:jars/dns_sd.jar" BonjourBrowser

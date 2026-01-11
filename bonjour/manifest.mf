@@ -1,4 +1,4 @@
 Manifest-Version: 1.0
 Main-Class: BonjourBrowser
-Class-Path: jars/dns_sd.jar jars/jbcl.jar
+Class-Path: jars/dns_sd.jar
 X-COMMENT: BonjourBrowser - Java Bonjour/Zeroconf Service Browser

@@ -53,8 +53,7 @@ bonjour/
 │   ├── BonjourBrowserSingleServiceListener.java
 │   └── TestRegister.java         # Test utility
 ├── jars/                         # Dependencies
-│   ├── dns_sd.jar                # Apple Bonjour/DNSSD API
-│   └── jbcl.jar                  # Borland Java Class Library
+│   └── dns_sd.jar                # Apple Bonjour/DNSSD API
 ├── resources/                    # Icons and resources
 ├── javadoc/                      # Generated API documentation
 │
@@ -100,16 +99,16 @@ ant javadoc    # Generate documentation
 cd bonjour
 
 # Compile (Windows)
-javac -cp "jars/dns_sd.jar;jars/jbcl.jar" -d build/classes src/*.java
+javac -cp "jars/dns_sd.jar" -d build/classes src/*.java
 
 # Compile (macOS/Linux)
-javac -cp "jars/dns_sd.jar:jars/jbcl.jar" -d build/classes src/*.java
+javac -cp "jars/dns_sd.jar" -d build/classes src/*.java
 
 # Run (Windows)
-java -cp "build/classes;jars/dns_sd.jar;jars/jbcl.jar" BonjourBrowser
+java -cp "build/classes;jars/dns_sd.jar" BonjourBrowser
 
 # Run (macOS/Linux)
-java -cp "build/classes:jars/dns_sd.jar:jars/jbcl.jar" BonjourBrowser
+java -cp "build/classes:jars/dns_sd.jar" BonjourBrowser
 ```
 
 ## Run Configurations
@@ -141,7 +140,6 @@ The application follows an MVC-inspired pattern:
 | Library | Purpose |
 |---------|---------|
 | `dns_sd.jar` | Apple DNSSD/Bonjour API for service discovery |
-| `jbcl.jar` | Borland Java Class Library (GridBagLayout2) |
 
 ## License
 

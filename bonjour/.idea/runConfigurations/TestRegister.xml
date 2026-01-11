@@ -2,7 +2,12 @@
   <configuration default="false" name="TestRegister" type="Application" factoryName="Application">
     <option name="MAIN_CLASS_NAME" value="TestRegister" />
     <module name="JBonjourBrowser" />
+    <option name="VM_PARAMETERS" value="-Djava.library.path=$PROJECT_DIR$/lib" />
+    <option name="PROGRAM_PARAMETERS" value="" />
     <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <envs>
+      <env name="PATH" value="$PROJECT_DIR$/lib;$PATH$" />
+    </envs>
     <method v="2">
       <option name="Make" enabled="true" />
     </method>

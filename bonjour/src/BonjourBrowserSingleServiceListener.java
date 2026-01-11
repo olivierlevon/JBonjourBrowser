@@ -1,112 +1,167 @@
 import com.apple.dnssd.*;
-import java.util.regex.*;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
-  * Class for implementation of a listener for specific service advertisements.<br>
-*/
+ * Class for implementation of a listener for specific service advertisements.
+ * Discovers individual service instances and resolves their details.
+ */
+public class BonjourBrowserSingleServiceListener implements BrowseListener, ResolveListener {
 
-public class BonjourBrowserSingleServiceListener implements BrowseListener, ResolveListener
-{
-/**
-  *   BonjourBrowserInterface instance for the GUI of the browser
-*/
-  protected BonjourBrowserInterface _gui_browser;
-/**
-  * Constructs a new BonjourBrowserSingleServiceListener.<br>
-  * Implements a listener for specific service advertisements.<br>
-  * @param gui_intf BonjourBrowserInterface instance of the browser<br>
-*/
+    private final BonjourBrowserInterface guiBrowser;
+    private final Map<String, DNSSDService> activeResolvers = new ConcurrentHashMap<>();
 
-  public BonjourBrowserSingleServiceListener(BonjourBrowserInterface gui_intf) {
-    _gui_browser = gui_intf;
-  }
-
-  /**
-    * Displays error message on failure.<br>
-    * @param service DNSSDService instance<br>
-    * @param errorCode the errocode to display <br>
-  */
-  public void operationFailed(DNSSDService service, int errorCode) {
-    System.out.println("Browse failed " + errorCode);
-    System.exit( -1);
-  }
-
-  /**
-    * Displays services we discover.<br>
-    * @param browser DNSSDService instance<br>
-    * @param flags flags for use <br>
-    * @param ifIndex ifIndex for use <br>
-    * @param serviceName the service provider name to find <br>
-    * @param regType the service provider information to find<br>
-    * @param domain the service provider domain to find<br>
-    * @see BonjourBrowserElement
-    * @see BonjourBrowserInterface#addGeneralNode(BonjourBrowserElement element)
-  */
-  public void serviceFound(DNSSDService browser, int flags, int ifIndex,
-                           String serviceName, String regType, String domain) {
-
-    System.out.println("ADD flags:" + flags + ", ifIndex:" + ifIndex +
-                       ", Name:" + serviceName + ", Type:" + regType +
-                       ", Domain:" +
-                       domain);
-
-    try {
-        String fullName = DNSSD.constructFullName(serviceName, regType, domain);
-        _gui_browser.addNode(new BonjourBrowserElement(browser, flags, ifIndex, fullName, serviceName, regType, domain));
-        DNSSDService r = DNSSD.resolve(0, DNSSD.ALL_INTERFACES, serviceName, regType, domain, this);
-
-      }
-      catch (Exception e) {
-        e.printStackTrace();
-      }
-  }
-
-/**
-  * Removes the services when services go away.<br>
-  * @param browser DNSSDService instance<br>
-  * @param flags flags for use <br>
-  * @param ifIndex ifIndex for use <br>
-  * @param name the service provider name to go away <br>
-  * @param regType the service provider information to go away<br>
-  * @param domain the service provider domain to go away<br>
-  * @see BonjourBrowserElement
-  * @see BonjourBrowserInterface#removeNode(BonjourBrowserElement element)
-*/
- public void serviceLost(DNSSDService browser, int flags, int ifIndex,
-                          String name, String regType, String domain) {
-    System.out.println("REMOVE flags:" + flags + ", ifIndex:" + ifIndex +
-                       ", Name:" + name + ", Type:" + regType + ", Domain:" +
-                       domain);
-
-      try {
-        String fullName = DNSSD.constructFullName(name, regType, domain);
-        _gui_browser.removeNode(new BonjourBrowserElement(browser, flags, ifIndex,
-            fullName, name, regType, domain));
-      }
-      catch (Exception e) {
-        e.printStackTrace();
-      }
+    /**
+     * Constructs a new BonjourBrowserSingleServiceListener.
+     * Implements a listener for specific service advertisements.
+     * @param guiIntf BonjourBrowserInterface instance of the browser (must not be null)
+     * @throws NullPointerException if guiIntf is null
+     */
+    public BonjourBrowserSingleServiceListener(BonjourBrowserInterface guiIntf) {
+        guiBrowser = Objects.requireNonNull(guiIntf, "guiIntf must not be null");
     }
-/**
-  * Resolves the services when services are resolved.<br>
-  * @param resolver DNSSDService instance<br>
-  * @param flags flags for use <br>
-  * @param ifIndex ifIndex for use <br>
-  * @param fullName the service provider name to be resolved<br>
-  * @param hostName the service provider hostname to be resolved<br>
-  * @param port the service provider port to be resolved<br>
-  * @param txtRecord the service provider txtrecord to be resolved<br>
-  * @see BonjourBrowserElement
-  * @see BonjourBrowserInterface#resolveNode(BonjourBrowserElement element)
-*/
-  public void serviceResolved( DNSSDService resolver, int flags, int ifIndex, String fullName,
-                                                         String hostName, int port, TXTRecord txtRecord)
- {
-   System.out.println("RESOLVE flags:" + flags + ", ifIndex:" + ifIndex +
+
+    /**
+     * Called when a browse or resolve operation fails.
+     * @param service DNSSDService instance that failed
+     * @param errorCode the error code
+     */
+    @Override
+    public void operationFailed(DNSSDService service, int errorCode) {
+        System.err.println("Browse/Resolve failed with error code: " + errorCode);
+
+        // Remove failed resolver from tracking map (find by value since we don't have fullName)
+        if (service != null) {
+            activeResolvers.entrySet().removeIf(entry -> entry.getValue() == service);
+            service.stop();
+        }
+    }
+
+    /**
+     * Called when a service is discovered.
+     * @param browser DNSSDService instance
+     * @param flags flags for use
+     * @param ifIndex interface index
+     * @param serviceName the service provider name
+     * @param regType the service type
+     * @param domain the service provider domain
+     */
+    @Override
+    public void serviceFound(DNSSDService browser, int flags, int ifIndex,
+                             String serviceName, String regType, String domain) {
+
+        System.out.println("ADD flags:" + flags + ", ifIndex:" + ifIndex +
+                ", Name:" + serviceName + ", Type:" + regType +
+                ", Domain:" + domain);
+
+        String fullName = null;
+        try {
+            fullName = DNSSD.constructFullName(serviceName, regType, domain);
+
+            // Start resolver first - if it fails, we won't add the node to GUI
+            DNSSDService resolver = DNSSD.resolve(0, DNSSD.ALL_INTERFACES,
+                    serviceName, regType, domain, this);
+
+            // Only add to map and GUI after resolve started successfully
+            activeResolvers.put(fullName, resolver);
+
+            guiBrowser.addNode(new BonjourBrowserElement(
+                    browser, flags, ifIndex, fullName, serviceName, regType, domain));
+
+        } catch (DNSSDException e) {
+            System.err.println("Error resolving service " + serviceName + ": " + e.getMessage());
+            e.printStackTrace();
+            // If resolve failed but we somehow got a fullName, clean up any partial state
+            if (fullName != null) {
+                activeResolvers.remove(fullName);
+            }
+        }
+    }
+
+    /**
+     * Called when a service is no longer available.
+     * @param browser DNSSDService instance
+     * @param flags flags for use
+     * @param ifIndex interface index
+     * @param serviceName the service provider name
+     * @param regType the service type
+     * @param domain the service provider domain
+     */
+    @Override
+    public void serviceLost(DNSSDService browser, int flags, int ifIndex,
+                            String serviceName, String regType, String domain) {
+        System.out.println("REMOVE flags:" + flags + ", ifIndex:" + ifIndex +
+                ", Name:" + serviceName + ", Type:" + regType + ", Domain:" + domain);
+
+        try {
+            String fullName = DNSSD.constructFullName(serviceName, regType, domain);
+
+            // Stop and remove the resolver for this service
+            DNSSDService resolver = activeResolvers.remove(fullName);
+            if (resolver != null) {
+                resolver.stop();
+            }
+
+            guiBrowser.removeNode(new BonjourBrowserElement(
+                    browser, flags, ifIndex, fullName, serviceName, regType, domain));
+        } catch (DNSSDException e) {
+            System.err.println("Error removing service " + serviceName + ": " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Called when a service is resolved.
+     * @param resolver DNSSDService instance (the resolver that completed)
+     * @param flags flags for use
+     * @param ifIndex interface index
+     * @param fullName the service provider full name
+     * @param hostName the service provider hostname
+     * @param port the service provider port
+     * @param txtRecord the service provider TXT record
+     */
+    @Override
+    public void serviceResolved(DNSSDService resolver, int flags, int ifIndex, String fullName,
+                                String hostName, int port, TXTRecord txtRecord) {
+        System.out.println("RESOLVE flags:" + flags + ", ifIndex:" + ifIndex +
                 ", Name:" + fullName + ", Hostname:" + hostName + ", port:" +
                 port + ", TextRecord:" + txtRecord);
 
-  _gui_browser.resolveNode(new BonjourBrowserElement(resolver, flags, ifIndex, fullName, hostName, port, txtRecord));
- }
-}
+        guiBrowser.resolveNode(new BonjourBrowserElement(
+                resolver, flags, ifIndex, fullName, hostName, port, txtRecord));
 
+        // Remove from tracking map (may already be removed if serviceLost came first)
+        activeResolvers.remove(fullName);
+
+        // Stop the resolver directly using the parameter (guaranteed valid, same object)
+        // This is a one-shot resolve - we don't need continuous updates
+        resolver.stop();
+    }
+
+    /**
+     * Checks if there are any active resolvers.
+     * @return true if there are active resolvers
+     */
+    public boolean hasActiveResolvers() {
+        return !activeResolvers.isEmpty();
+    }
+
+    /**
+     * Gets the count of active resolvers.
+     * @return the number of active resolvers
+     */
+    public int getActiveResolverCount() {
+        return activeResolvers.size();
+    }
+
+    /**
+     * Stops all active resolvers and releases resources.
+     */
+    public void stopAllResolvers() {
+        for (DNSSDService resolver : activeResolvers.values()) {
+            resolver.stop();
+        }
+        activeResolvers.clear();
+    }
+}

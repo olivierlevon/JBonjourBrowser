@@ -1,149 +1,152 @@
 import com.apple.dnssd.*;
-import java.util.regex.*;
+import java.util.Objects;
 
 /**
-  * Class for implementation of a listener for general service advertisements.<br>
-*/
+ * Class for implementation of a listener for general service advertisements.
+ * Discovers service types available on the network using the meta-query.
+ */
+public class BonjourBrowserMultiServiceListener implements BrowseListener {
 
-public class BonjourBrowserMultiServiceListener implements BrowseListener, ResolveListener
-{
-/**
- *   DNSSDService instance for single services
-*/
-  protected DNSSDService _browser_for_services;
-/**
- *   BonjourBrowserInterface instance for the GUI of the browser
-*/
-  protected BonjourBrowserInterface _gui_browser;
+    private static final String SERVICES_META_QUERY = "_services._dns-sd._udp.";
 
-/**
-  * Constructs a new BonjourBrowserMultiServiceListener.<br>
-  * Implements a listener for general service advertisements.
-  * @param browser BonjourBrowserInterface instance of the browser<br>
-*/
-  public BonjourBrowserMultiServiceListener(BonjourBrowserInterface browser) throws DNSSDException, InterruptedException {
-     System.out.println("TestBrowse Starting");
-     _browser_for_services = DNSSD.browse( 0, 0, "_services._dns-sd._udp.", "", this);
-     _gui_browser = browser;
-     System.out.println("TestBrowse Running");
-  }
+    private volatile DNSSDService browserForServices;
+    private final BonjourBrowserInterface guiBrowser;
 
-/**
-  * Dsplays error message on failure.<br>
-  * @param service DNSSDService instance<br>
-  * @param errorCode the errocode to display <br>
-*/
-  public void operationFailed(DNSSDService service, int errorCode) {
-    System.out.println("Browse failed " + errorCode);
-    System.exit( -1);
-  }
-
-/**
-  * Displays services we discover.<br>
-  * @param browser DNSSDService instance<br>
-  * @param flags flags for use <br>
-  * @param ifIndex ifIndex for use <br>
-  * @param serviceName the service provider name to find <br>
-  * @param regType the service provider information to find<br>
-  * @param domain the service provider domain to find<br>
-  * @see BonjourBrowserElement
-  * @see BonjourBrowserInterface#addGeneralNode(BonjourBrowserElement element)
-*/
-
-  public void serviceFound(DNSSDService browser, int flags, int ifIndex,
-                           String serviceName, String regType, String domain) {
-
-    System.out.println("ADD flags:" + flags + ", ifIndex:" + ifIndex +
-                       ", Name:" + serviceName + ", Type:" + regType +
-                       ", Domain:" +
-                       domain);
-      try {
-        domain = regType.substring(regType.indexOf(".")+1, regType.length());
-        regType = serviceName + (regType.startsWith("_udp.") ? "._udp." : "._tcp.");
-        _gui_browser.addGeneralNode(new BonjourBrowserElement(browser, flags, ifIndex, "", serviceName, regType, domain));
-      }
-      catch (Exception e) {
-        e.printStackTrace();
-      }
-  }
-/**
-  * Prints a line when services go away.<br>
-  * @param browser DNSSDService instance<br>
-  * @param flags flags for use <br>
-  * @param ifIndex ifIndex for use <br>
-  * @param name the service provider name to go away <br>
-  * @param regType the service provider information to go away<br>
-  * @param domain the service provider domain to go away<br>
-*/
-
-  public void serviceLost(DNSSDService browser, int flags, int ifIndex,
-                          String name, String regType, String domain) {
-    System.out.println("REMOVE flags:" + flags + ", ifIndex:" + ifIndex +
-                       ", Name:" + name + ", Type:" + regType + ", Domain:" +
-                       domain);
+    /**
+     * Constructs a new BonjourBrowserMultiServiceListener.
+     * Implements a listener for general service advertisements.
+     * @param browser BonjourBrowserInterface instance of the browser (must not be null)
+     * @throws DNSSDException if browsing fails to start
+     * @throws NullPointerException if browser is null
+     */
+    public BonjourBrowserMultiServiceListener(BonjourBrowserInterface browser) throws DNSSDException {
+        // Assign guiBrowser BEFORE starting browse to avoid race condition
+        // (callbacks can fire immediately on another thread)
+        this.guiBrowser = Objects.requireNonNull(browser, "browser must not be null");
+        System.out.println("BonjourBrowserMultiServiceListener Starting");
+        browserForServices = DNSSD.browse(0, DNSSD.ALL_INTERFACES, SERVICES_META_QUERY, "", this);
+        System.out.println("BonjourBrowserMultiServiceListener Running");
     }
-/**
-  * Prints a line when services are resolved.<br>
-  * @param resolver DNSSDService instance<br>
-  * @param flags flags for use <br>
-  * @param ifIndex ifIndex for use <br>
-  * @param fullName the service provider name to be resolved<br>
-  * @param hostName the service provider hostname to be resolved<br>
-  * @param port the service provider port to be resolved<br>
-  * @param txtRecord the service provider txtrecord to be resolved<br>
-*/
-  public void serviceResolved( DNSSDService resolver, int flags, int ifIndex, String fullName,
-                                                         String hostName, int port, TXTRecord txtRecord)
- {
-   System.out.println("RESOLVE flags:" + flags + ", ifIndex:" + ifIndex +
-                ", Name:" + fullName + ", Hostname:" + hostName + ", port:" +
-                port + ", TextRecord:" + txtRecord);
 
- }
- /**
-   * Converts a registration type into a human-readable string. Returns original string on no-match.<br>
-   * @param type the service type to map<br>
-   * @return type the human-readable service type<br>
-*/
+    /**
+     * Checks if the browser is currently running.
+     * @return true if browsing is active
+     */
+    public boolean isRunning() {
+        return browserForServices != null;
+    }
 
-  protected String	mapTypeToName( String type)
-       // Convert a registration type into a human-readable string. Returns original string on no-match.
-       {
-               final String[]	namedServices = {
-                       "_afpovertcp",	"Apple File Sharing",
-                       "_http",		"World Wide Web servers",
-                       "_daap",		"Digital Audio Access",
-                       "_apple-sasl",	"Apple Password Servers",
-                       "_distcc",		"Distributed Compiler nodes",
-                       "_finger",		"Finger servers",
-                       "_ichat",		"iChat clients",
-                       "_presence",	"iChat AV clients",
-                       "_ssh",			"SSH servers",
-                       "_telnet",		"Telnet servers",
-                       "_workstation",	"Macintosh Manager clients",
-                       "_bootps",		"BootP servers",
-                       "_xserveraid",	"XServe RAID devices",
-                       "_eppc",		"Remote AppleEvents",
-                       "_ftp",			"FTP services",
-                       "_tftp",		"TFTP services"
-               };
+    /**
+     * Called when a browse operation fails.
+     * @param service DNSSDService instance
+     * @param errorCode the error code
+     */
+    @Override
+    public void operationFailed(DNSSDService service, int errorCode) {
+        System.err.println("BonjourBrowserMultiServiceListener browse failed with error code: " + errorCode);
+        if (service != null) {
+            service.stop();
+        }
+        browserForServices = null;
+    }
 
-               for ( int i = 0; i < namedServices.length; i+=2)
-                       if ( namedServices[i].equals( type))
-                               return namedServices[i + 1];
-               return type;
-       }
+    /**
+     * Called when a service type is discovered.
+     * @param browser DNSSDService instance
+     * @param flags flags for use
+     * @param ifIndex interface index
+     * @param serviceName the service type name (e.g., "_http")
+     * @param regType the registration type (e.g., "_tcp.local.")
+     * @param domain the domain
+     */
+    @Override
+    public void serviceFound(DNSSDService browser, int flags, int ifIndex,
+                             String serviceName, String regType, String domain) {
 
-/**
-  * Stops browsing services.<br>
-*/
-  protected void finalize() {
-    System.out.println("TestBrowse Stopping");
-    _browser_for_services.stop();
-  }
+        System.out.println("ADD flags:" + flags + ", ifIndex:" + ifIndex +
+                ", Name:" + serviceName + ", Type:" + regType +
+                ", Domain:" + domain);
 
-  private void jbInit() throws Exception {
-  }
+        try {
+            BonjourBrowserElement element = createElementFromMetaQuery(
+                    browser, flags, ifIndex, serviceName, regType, domain);
+            guiBrowser.addGeneralNode(element);
+        } catch (Exception e) {
+            System.err.println("Error processing discovered service type: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Called when a service type is no longer available.
+     * @param browser DNSSDService instance
+     * @param flags flags for use
+     * @param ifIndex interface index
+     * @param serviceName the service type name
+     * @param regType the registration type
+     * @param domain the domain
+     */
+    @Override
+    public void serviceLost(DNSSDService browser, int flags, int ifIndex,
+                            String serviceName, String regType, String domain) {
+        System.out.println("REMOVE flags:" + flags + ", ifIndex:" + ifIndex +
+                ", Name:" + serviceName + ", Type:" + regType + ", Domain:" + domain);
+
+        try {
+            BonjourBrowserElement element = createElementFromMetaQuery(
+                    browser, flags, ifIndex, serviceName, regType, domain);
+            guiBrowser.removeGeneralNode(element);
+        } catch (Exception e) {
+            System.err.println("Error removing service type: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Creates a BonjourBrowserElement from meta-query callback parameters.
+     * The meta-query returns service types in a special format that needs conversion.
+     * @param browser DNSSDService instance
+     * @param flags flags for use
+     * @param ifIndex interface index
+     * @param serviceName the service type name (e.g., "_http")
+     * @param regType the registration type from meta-query (e.g., "_tcp.local.")
+     * @param domain the domain
+     * @return BonjourBrowserElement with actual service type and domain
+     */
+    private BonjourBrowserElement createElementFromMetaQuery(DNSSDService browser, int flags,
+                                                              int ifIndex, String serviceName,
+                                                              String regType, String domain) {
+        String actualDomain;
+        String actualRegType;
+
+        // Extract domain from regType (e.g., "_tcp.local." -> "local.")
+        int dotIndex = regType.indexOf(".");
+        if (dotIndex >= 0 && dotIndex < regType.length() - 1) {
+            actualDomain = regType.substring(dotIndex + 1);
+        } else {
+            actualDomain = domain;
+        }
+
+        // Build actual registration type from serviceName and protocol
+        if (regType.startsWith("_udp.")) {
+            actualRegType = serviceName + "._udp.";
+        } else {
+            actualRegType = serviceName + "._tcp.";
+        }
+
+        return new BonjourBrowserElement(
+                browser, flags, ifIndex, "", serviceName, actualRegType, actualDomain);
+    }
+
+    /**
+     * Stops browsing for services and releases resources.
+     */
+    public void stop() {
+        DNSSDService service = browserForServices;
+        if (service != null) {
+            System.out.println("BonjourBrowserMultiServiceListener Stopping");
+            browserForServices = null;
+            service.stop();
+        }
+    }
 }
-
-

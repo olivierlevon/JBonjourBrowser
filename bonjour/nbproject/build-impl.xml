@@ -25,7 +25,6 @@
     <!-- Classpath definitions -->
     <path id="compile.classpath">
         <pathelement location="jars/dns_sd.jar"/>
-        <pathelement location="jars/jbcl.jar"/>
     </path>
 
     <path id="run.classpath">
@@ -68,7 +67,7 @@
         <jar destfile="${dist.jar}" basedir="${build.classes.dir}">
             <manifest>
                 <attribute name="Main-Class" value="${main.class}"/>
-                <attribute name="Class-Path" value="jars/dns_sd.jar jars/jbcl.jar"/>
+                <attribute name="Class-Path" value="jars/dns_sd.jar"/>
             </manifest>
         </jar>
         <!-- Copy dependencies to dist -->

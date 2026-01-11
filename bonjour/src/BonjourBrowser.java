@@ -1,154 +1,251 @@
 import javax.swing.*;
 import javax.swing.tree.*;
+import javax.swing.event.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 /**
  * <p>Title: Java BonjourBrowser</p>
  *
- * <p>Description: </p>
- * An application like Bonjour Browser is necessary to view the services that are present and being announced in a network where devices are Bonjour-capable. While Bonjour Browser does a very good job on the Mac OS X platform, we will need an application that can work similarly, display all services and run on several platforms. Hence it was necessary to build a tool like Bonjour Browser in Java that could run on multiple platforms.<br>
- * A tool like Bonjour Browser is especially helpful while troubleshooting service discovery in the IRT Lab's 7DS research, since the project involves mobile disconnected networks where devices are often very transient and services are announced and disappear shortly afterwards. .
-
+ * <p>Description: A cross-platform Bonjour/Zeroconf service browser.</p>
+ *
+ * <p>An application like Bonjour Browser is necessary to view the services that are present
+ * and being announced in a network where devices are Bonjour-capable. While Bonjour Browser
+ * does a very good job on the Mac OS X platform, we will need an application that can work
+ * similarly, display all services and run on several platforms. Hence it was necessary to
+ * build a tool like Bonjour Browser in Java that could run on multiple platforms.</p>
+ *
+ * <p>A tool like Bonjour Browser is especially helpful while troubleshooting service discovery
+ * in the IRT Lab's 7DS research, since the project involves mobile disconnected networks
+ * where devices are often very transient and services are announced and disappear shortly afterwards.</p>
+ *
  * @author Denis Abramov
  * @author Myounghwan Lee
  * @version 1.0
  */
+public class
+BonjourBrowser extends JFrame {
 
-import java.awt.*;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.DefaultTreeModel;
-import javax.swing.event.*;
+    private static final int WINDOW_WIDTH = 600;
+    private static final int WINDOW_HEIGHT = 720;
+    private static final int TREE_PANEL_IPADX = 500;
+    private static final int TREE_PANEL_IPADY = 600;
+    private static final int BUTTON_TOP_INSET = 20;
+    private static final int BUTTON_IPADY = 15;
 
-/**
-  * Main class for GUI components/events.<br>
-*/
+    private final JTree tree;
+    private final JButton reloadServicesBtn;
+    private final JScrollPane treeScrollPane;
+    private final BonjourBrowserImpl bonjourBrowserImpl;
+    private volatile BonjourBrowserMultiServiceListener multiServiceListener;
 
-public class BonjourBrowser
-    extends JFrame {
+    /**
+     * Constructs a new BonjourBrowser.<br>
+     * Sets the GUI property and initializes the browser implementation.
+     */
+    public BonjourBrowser() {
+        tree = new JTree();
+        reloadServicesBtn = new JButton();
+        treeScrollPane = new JScrollPane();
+        bonjourBrowserImpl = new BonjourBrowserImpl(this);
 
-/**
-  * Constructs a new BonjourBrowser.<br>
-  * Sets the GUI property.
-*/
-
-  public BonjourBrowser() {
-    try {
-      jbInit();
+        initComponents();
     }
-    catch (Exception ex) {
-      ex.printStackTrace();
+
+    private void initComponents() {
+        GridBagLayout gridBagLayout = new GridBagLayout();
+        this.getContentPane().setLayout(gridBagLayout);
+
+        reloadServicesBtn.setBorder(BorderFactory.createRaisedBevelBorder());
+        reloadServicesBtn.setText("Reload Services");
+        reloadServicesBtn.addActionListener(new ReloadServicesBtnActionListener());
+
+        this.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+        this.addWindowListener(new WindowCloseHandler());
+        this.setTitle("Bonjour Service Browser");
+
+        tree.setRootVisible(false);
+        tree.addTreeExpansionListener(new TreeExpansionHandler());
+
+        this.getContentPane().add(treeScrollPane,
+                new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
+                        GridBagConstraints.NORTH, GridBagConstraints.BOTH,
+                        new Insets(0, 0, 0, 0), TREE_PANEL_IPADX, TREE_PANEL_IPADY));
+        this.getContentPane().add(reloadServicesBtn,
+                new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
+                        GridBagConstraints.SOUTH, GridBagConstraints.HORIZONTAL,
+                        new Insets(BUTTON_TOP_INSET, 0, 0, 0), 0, BUTTON_IPADY));
+
+        treeScrollPane.setViewportView(tree);
     }
-  }
 
-  private void jbInit() throws Exception {
-    this.getContentPane().setLayout(gridBagLayout1);
-    reloadServicesBtn.setBorder(BorderFactory.createRaisedBevelBorder());
-    reloadServicesBtn.setText("Reload Services");
-    reloadServicesBtn.addActionListener(new
-        BonjourBrowser_reloadServicesBtn_actionAdapter(this));
-    this.setDefaultCloseOperation(EXIT_ON_CLOSE);
-    this.setTitle("Bonjour Service Browser");
-    tree.setRootVisible(false);
-    tree.addTreeExpansionListener(new BonjourBrowser_tree_treeExpansionAdapter(this));
-    this.getContentPane().add(jScrollPane1,             new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0
-            ,GridBagConstraints.NORTH, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 500, 600));
-    this.getContentPane().add(reloadServicesBtn,
-                                       new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0
-            ,GridBagConstraints.SOUTH, GridBagConstraints.BOTH, new Insets(20, 0, 0, 0), 0, 15));
-    jScrollPane1.getViewport().add(tree, null);
-  }
-/**
- * JTree for the browser.
-*/
-  public JTree tree = new JTree();
-/**
- * JButton for the reload services button.
-*/
-  public JButton reloadServicesBtn = new JButton();
-  GridBagLayout gridBagLayout1 = new GridBagLayout();
-/**
-   * BonjourBrowserImpl instance for the browser.
-*/
-  public BonjourBrowserImpl _bonjourBrowserImpl;
-  JScrollPane jScrollPane1 = new JScrollPane();
+    /**
+     * Gets the JTree for the browser.
+     * @return the JTree instance
+     */
+    public JTree getTree() {
+        return tree;
+    }
 
-/**
-  * Main method of this class.<br>
-  * Creates {@link BonjourBrowser} class<br>
-  * Implements BonjourBrowser by {@link BonjourBrowserImpl} class.<br>
-*/
-  public static void main(String args[]) {
-    try {
-      BonjourBrowser browser = new BonjourBrowser();
-      browser.addWindowListener(new WindowAdapter() {
-        public void windowClosing(WindowEvent e) {
-          System.exit(0);
+    /**
+     * Gets the BonjourBrowserImpl instance.
+     * @return the BonjourBrowserImpl instance
+     */
+    public BonjourBrowserImpl getBonjourBrowserImpl() {
+        return bonjourBrowserImpl;
+    }
+
+    /**
+     * Main method of this class.<br>
+     * Creates {@link BonjourBrowser} class<br>
+     * Implements BonjourBrowser by {@link BonjourBrowserImpl} class.<br>
+     * @param args command line arguments
+     */
+    public static void main(String[] args) {
+        // All Swing operations must be on the Event Dispatch Thread
+        SwingUtilities.invokeLater(() -> {
+            BonjourBrowser browser = null;
+            try {
+                browser = new BonjourBrowser();
+                browser.setSize(WINDOW_WIDTH, WINDOW_HEIGHT);
+                browser.setLocationRelativeTo(null);  // Center on screen
+                browser.reloadServices();
+                browser.setVisible(true);
+            } catch (Exception e) {
+                System.err.println("Failed to start BonjourBrowser: " + e.getMessage());
+                e.printStackTrace();
+                if (browser != null) {
+                    browser.dispose();
+                }
+                JOptionPane.showMessageDialog(null,
+                        "Failed to start BonjourBrowser: " + e.getMessage(),
+                        "Startup Error",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        });
+    }
+
+    /**
+     * Reloads the service browser by stopping any active listeners and
+     * starting a fresh service discovery.
+     *
+     * <p>This method:</p>
+     * <ul>
+     *   <li>Stops the previous multi-service listener if running</li>
+     *   <li>Cleans up browser implementation resources</li>
+     *   <li>Resets the tree model</li>
+     *   <li>Starts a new service discovery browse</li>
+     * </ul>
+     *
+     * <p>Thread Safety: This method can be called from any thread.
+     * If called from a non-EDT thread, it will dispatch to the EDT automatically.</p>
+     */
+    public void reloadServices() {
+        // Ensure we're on EDT for Swing operations
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(this::reloadServices);
+            return;
         }
-      });
 
-      browser._bonjourBrowserImpl = new BonjourBrowserImpl(browser);
-      browser.setSize(600, 720);
-      browser.reloadServicesBtn_actionPerformed(null);
-      browser.show();
-    } catch (Exception e) {
-      e.printStackTrace();
+        // Stop the previous listener if exists
+        BonjourBrowserMultiServiceListener oldListener = multiServiceListener;
+        if (oldListener != null) {
+            oldListener.stop();
+            multiServiceListener = null;
+        }
+
+        // Clean up the impl resources
+        bonjourBrowserImpl.cleanup();
+
+        // Reset the tree model
+        DefaultMutableTreeNode rootNode = new DefaultMutableTreeNode("");
+        DefaultTreeModel treeModel = new DefaultTreeModel(rootNode);
+        tree.setModel(treeModel);
+
+        try {
+            multiServiceListener = new BonjourBrowserMultiServiceListener(bonjourBrowserImpl);
+        } catch (Exception e) {
+            System.err.println("Failed to browse services: " + e.getMessage());
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this,
+                    "Failed to browse services: " + e.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
-  }
 
-/**
-  * Performs the action of reloadServices Botton.<br>
-  * Resets the tree and calls the {@link BonjourBrowserMultiServiceListener} class.<br>
-  * @param actionEvent  the event generated by the reloadServicesBtn<br>
-*/
+    /**
+     * Cleans up all resources before shutdown.
+     */
+    private void cleanup() {
+        // Stop the multi-service listener
+        BonjourBrowserMultiServiceListener listener = multiServiceListener;
+        if (listener != null) {
+            listener.stop();
+            multiServiceListener = null;
+        }
 
-  public void reloadServicesBtn_actionPerformed(ActionEvent actionEvent) {
-    DefaultMutableTreeNode root_node = null;
-    root_node = new DefaultMutableTreeNode("");
-    DefaultTreeModel treeModel = new DefaultTreeModel(root_node);
-    tree.setModel(treeModel);
+        // Clean up the browser implementation
+        bonjourBrowserImpl.cleanup();
 
-    try {
-      BonjourBrowserMultiServiceListener listener = new BonjourBrowserMultiServiceListener(_bonjourBrowserImpl);
-    } catch (Exception e) {
-      e.printStackTrace();
+        System.out.println("BonjourBrowser cleanup completed");
     }
-  }
 
-  void tree_treeExpanded(TreeExpansionEvent e) {
-    TreePath path = e.getPath();
-    if (path.getPathCount() != 3 || this._bonjourBrowserImpl._ignore_tree_expansion)
-      return;
+    /**
+     * Handles tree node expansion events to trigger service discovery.
+     *
+     * <p>This method only acts when a service type node (depth 3) is expanded:
+     * Path structure: [root, domain, regType]. When expanded, it subscribes
+     * to that service type to discover individual service instances.</p>
+     *
+     * <p>Expansion of other nodes (domain nodes, service instance nodes) is ignored.</p>
+     *
+     * @param e the tree expansion event
+     */
+    private void handleTreeExpanded(TreeExpansionEvent e) {
+        TreePath path = e.getPath();
+        if (path.getPathCount() != 3 || bonjourBrowserImpl.isIgnoreTreeExpansion()) {
+            return;
+        }
 
-    DefaultMutableTreeNode domain = (DefaultMutableTreeNode) path.getPathComponent(1);
-    DefaultMutableTreeNode regType = (DefaultMutableTreeNode) path.getPathComponent(2);
-    this._bonjourBrowserImpl.subscribe((String) domain.getUserObject(), (String) regType.getUserObject() );
-  }
-}
+        DefaultMutableTreeNode domain = (DefaultMutableTreeNode) path.getPathComponent(1);
+        DefaultMutableTreeNode regType = (DefaultMutableTreeNode) path.getPathComponent(2);
 
-class BonjourBrowser_reloadServicesBtn_actionAdapter
-    implements ActionListener {
-  private BonjourBrowser adaptee;
-  BonjourBrowser_reloadServicesBtn_actionAdapter(BonjourBrowser adaptee) {
-    this.adaptee = adaptee;
-  }
+        // Use toString() directly - handles null userObject safely
+        String domainStr = domain.toString();
+        String regTypeStr = regType.toString();
 
-  public void actionPerformed(ActionEvent actionEvent) {
-    adaptee.reloadServicesBtn_actionPerformed(actionEvent);
-  }
-}
+        bonjourBrowserImpl.subscribe(domainStr, regTypeStr);
+    }
 
-class BonjourBrowser_tree_treeExpansionAdapter implements javax.swing.event.TreeExpansionListener {
-  BonjourBrowser adaptee;
+    private class ReloadServicesBtnActionListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent actionEvent) {
+            reloadServices();
+        }
+    }
 
-  BonjourBrowser_tree_treeExpansionAdapter(BonjourBrowser adaptee) {
-    this.adaptee = adaptee;
-  }
-  public void treeCollapsed(TreeExpansionEvent e) {
-  }
-  public void treeExpanded(TreeExpansionEvent e) {
-    adaptee.tree_treeExpanded(e);
-  }
+    private class TreeExpansionHandler implements TreeExpansionListener {
+        @Override
+        public void treeCollapsed(TreeExpansionEvent e) {
+            // No action needed on collapse
+        }
+
+        @Override
+        public void treeExpanded(TreeExpansionEvent e) {
+            handleTreeExpanded(e);
+        }
+    }
+
+    private class WindowCloseHandler extends WindowAdapter {
+        @Override
+        public void windowClosing(WindowEvent e) {
+            cleanup();
+            dispose();
+            System.exit(0);
+        }
+    }
 }
