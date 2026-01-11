@@ -1,0 +1,23 @@
+Java BonjourBrowser
+
+An application like Bonjour Browser is necessary to view the services that are present and being announced in a network where devices are Bonjour-capable. While Bonjour Browser does a very good job on the Mac OS X platform, we will need an application that can work similarly, display all services and run on several platforms. Hence it was necessary to build a tool like Bonjour Browser in Java that could run on multiple platforms.
+A tool like Bonjour Browser is especially helpful while troubleshooting service discovery in the IRT Lab's 7DS research, since the project involves mobile disconnected networks where devices are often very transient and services are announced and disappear shortly afterwards.
+
+Copyright (C) 2006 Denis Abramov, Myounghwan Lee, Internet Real Time Lab at Columbia University
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+If you want to contact us, please send an email to Denis Abramov(dabramov@optonline.net), Myounghwan Lee(ml2483@columbia.edu), Suman Srinivasan(srs2117@columbia.edu), Prof. Henning Schulzrinne(hgs@cs.columbia.edu)
+

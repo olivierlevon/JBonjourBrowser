@@ -1,0 +1,135 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<!-- saved from url=(0053)http://www.cs.columbia.edu/~hgs/etc/report-style.html -->
+<HTML><HEAD><TITLE>Java Bonjour Browser</TITLE>
+<META http-equiv=Content-Type content="text/html; charset=ks_c_5601-1987">
+<META content="Your name here" name=author>
+<META content="keyword; keyword" name=keywords>
+<META content="Brief description of project." name=description>
+<META content="MSHTML 6.00.2900.3020" name=GENERATOR></HEAD>
+<BODY bgColor=white>
+<H1>Java Bonjour Browser</H1>
+<ADDRESS>Denis Abramov<BR>Columbia University 
+<BR>2960 New York, NY 10027-6902<BR>USA<BR><A 
+href="mailto:dabramov@optonline.net">dabramov@optonline.net</A> </ADDRESS>
+<P>
+<ADDRESS>Myounghwan Lee<BR>Columbia University
+<BR>2960 New York, NY 10027-6902
+<BR>USA<BR><A href="mailto:ml2483@columbia.edu">ml2483@columbia.edu</A> 
+</ADDRESS>
+<H2>Abstract</H2>
+<P>The aim of this ptoject is to build a Java Swing application that 
+has all of the functionality in Bonjour Browser. It is able to list all the services that are offered on the network
+by Bonjour devices.
+
+<H2>Table of Contents</H2>
+
+<P><a href="#Introduction">1. Introduction and Background</a><br>
+   <a href="#Introduction1">1.1 About Bonjour</a><br>
+   <a href="#Introduction2">1.2 About Bonjour Browser</a><br>
+   <a href="#Introduction3">1.3 About Java Bonjour Browser and and why it was needed</a><br>
+   <a href="#System">2. System requirements</a><br>
+   <a href="#Installation">3. Installation instructions</a><br> 
+   <a href="#Operation">4. Operation</a><br>
+   <a href="#Program">5. Program stucture and internal operation</a><br>
+   <a href="#Program1">5.1 Classes</a><br>
+   <a href="#Program2">5.2 Internal operation</a><br>
+   <a href="#enhancements">6. Useful enhancements</a><br>
+   <a href="#Acknowledgements">7. Acknowledgements</a><br> 
+   <a href="#Task">8. Task List</a><br>
+   <a href="#References">9. References</a><br>
+
+<H2><a name="Introduction">1. Introduction and Background</a>s</H2>
+<P>Bonjour is Apple Computer's trade name for its implementation of Zeroconf, a service discovery protocol used in Apple's Mac OS X operating system from version 10.2 onwards. Intended for use on local area networks, Bonjour uses multicast Domain Name System service records to locate devices such as printers, as well as other computers, and the services that those devices offer. And Bonjour Browser shows us all the known Bonjour services available  along with any extra information given with the service. Therefore we tried to make an application to be able to run on any platform on which Bonjour is working.
+<H3><a name="Introduction1">1.1 About Bonjour</a></H3>
+<P>
+Bonjour <a href="#1">[1]</a> is Apple’s proposal for zero-configuration networking over IP. The ZEROCONF Working Group’s requirements and proposed solutions for zero-configuration networking over IP essentially cover three areas:
+<P>
+o addressing (allocating IP addresses to hosts)<br>
+o naming (using names to refer to hosts instead of IP addresses)<br>
+o service discovery (finding services on the network automatically)<br>
+<P>
+Bonjour has a zero-configuration solution for all three of these areas, as described in the following four sections.
+<P>
+Bonjour allows service providers, hardware manufacturers, and application programmers to support a single network protocol-IP-while breaking new ground in ease of use.
+<P>
+Network users no longer have to assign IP addresses, assign host names, or even type in names to access services on the network. Users simply ask to see what network services are available, and choose from the list.
+
+<P>
+In many ways, this kind of browsing is even more powerful for applications than for users. Applications can automatically detect services they need or other applications they can interact with, allowing automatic connection, communication, and data exchange, without requiring user intervention.
+<H3><a name="Introduction2">1.2 About Bonjour Browser</a></H3>
+<P>
+Bonjour Browser <a href="#1">[2]</a> is an application that lets you browse all the Bonjour services available on your local network. This application will show you all the known Bonjour services available and what computers have them, along with any extra information given with the service.
+
+<H3><a name="Introduction3">1.3 About Java Bonjour Browser and and why it was needed</a></H3>
+<P>
+An application like Bonjour Browser is necessary to view the services
+that are present and being announced in a network where devices are
+Bonjour-capable. While Bonjour Browser does a very good job on the Mac
+OS X platform, we will need an application that can work similarly,
+display all services and run on several platforms. Hence it was
+necessary to build a tool like Bonjour Browser in Java that could run on
+multiple platforms.
+<P>
+A tool like Bonjour Browser is especially helpful while troubleshooting
+service discovery in the IRT Lab's 7DS research, since the project
+involves mobile disconnected networks where devices are often very
+transient and services are announced and disappear shortly afterwards.
+.
+
+
+<H2><a name="System">2. System requirements</a></H2>
+Mac OS 9, Mac OS X, Linux, BSD, Solaris, VxWorks, and Windows. (Any platform on which Bonjour is working and with a Java 2 Runtime Environment)   
+<H2><a name="Installation">3. Installation instructions</a></H2>
+
+<H2><a name="Operation">4. Operation</a></H2>
+① Start Java Bonjour Browser.<br>
+② Java Bonjour Browser is searching for and listing the Bonjour general services available. (Figure 1)<br>
+③ If we want to see providers given with the general service, expand the tree the service is included. (Figure 2)<br>
+④ If we want to see the extra information given with the provider, expand the tree the provider is included. (Figure 3)<br>
+⑤ If we want to reload the Bonjour services available, we can push the "Reload Services"<br><br>
+<center><img src="service.gif"><H4>Figure 1</H4></center><br>
+<center><img src="service2.gif"><H4>Figure 2</H4></center><br>
+<center><img src="service3.gif"><H4>Figure 3</H4></center><br>
+<H2><a name="Program">5. Program stucture and internal operation</a></H2>
+<H3><a name="Program1">5.1 Classes</a></H3>
+<P>
+o BonjourBrowser -- main class for GUI components/events<br>
+o BonjourBrowserElement -- class to encapsulate the structures that Bonjour returns<br>
+o BonjourBrowserInterface -- the interface that Bonjour API needs to call to update GUI<br>
+o BnjourBrowserImp -- the implementation of the BonjourBrowserInterface<br>
+o BonjourBrowserMultiServiceBrowser -- implementation of a listener for general service advertisements<br>
+o BonjourBrowserSingleServiceBrowser -- implemenation of a listener for specific service advertisements<br>
+o TestRegister -- a sample service to register for testing<br>
+<P>
+<H3><a name="Program2">5.2 Internal operation</a></H3>
+<P>
+o The GUI starts up by browsing the "_services._dns-sd._udp." service
+which is a special service that advertises general services like
+"_http._tcp", "_ssh._tcp". <br>
+o When a general service is discovered by
+bonjour, it is passed to the BonjourBrowserMultiServiceBrowser and in
+turn added to the GUI tree. <br> 
+o When a user expands a general service,
+another request is made to Bonjour to discover all providers of that
+service. <br>
+o The BonjourBrowserSingleServiceBrowser is triggered, when each
+provider is discovered and the Jtree is updated. <br> 
+o Each of the providers
+is then resolved to obtain the ip address as well as other textual
+representations of the service. <br>
+o When services are removed, they are
+removed from the jtree.
+<P>
+<H2><a name="enhancements">6. Useful enhancements</a></H2>
+We made this application by using JAVA, so we can run it on any platform on which Bonjour is working and with a Java 2 Runtime Environment.
+<H2><a name="Acknowledgements">7. Acknowledgements for code and ideas borrowed</a></H2>
+<P>
+This document represents ideas and comments about Bonjour and Bonjour Browser from Apple Computer.<br>
+Thanks to Professor Henning Schulzrinne, Mentors Suman Srinivasan, Se Gi Hong.<br>
+<H2><a name="Task">8. Task List</a></H2>
+Denis Abramov  -  Designing  the structure of Java Bonjour Browser and communication coding work for Java Bonjour Browser with Bonjour.<br>
+Myounghwan Lee -  GUI coding work for displaying services in JTree, testing, packaging and compiling into an executable JAR file, and making the report and Javadoc file.
+<H2><a name="References">9. References</a></H2>
+<a name="1">[1] http://developer.apple.com/documentation/Cocoa/Conceptual/NetServices/index.html</a><br>
+<a name="2">[2] http://www.tildesoft.com/Programs</a>
+</BODY></HTML>
