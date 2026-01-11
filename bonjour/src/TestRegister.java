@@ -24,12 +24,20 @@ import com.apple.dnssd.*;
  */
 public class TestRegister implements RegisterListener {
 
+    // ========================================================================
+    // Constants
+    // ========================================================================
+
     private static final String DEFAULT_SERVICE_NAME = "Test Service";
     private static final String DEFAULT_SERVICE_TYPE = "_http._tcp.";
     private static final String DEFAULT_DOMAIN = "local.";
     private static final int DEFAULT_DURATION_MINUTES = 10;
     private static final String SEPARATOR_LINE = "==================================================";
     private static final int REGISTRATION_TIMEOUT_SECONDS = 10;
+
+    // ========================================================================
+    // Instance Fields
+    // ========================================================================
 
     private final String serviceName;
     private final String serviceType;
@@ -49,6 +57,10 @@ public class TestRegister implements RegisterListener {
     private volatile String registrationError = null;
     private volatile Thread mainThread;
     private volatile Thread shutdownHook;
+
+    // ========================================================================
+    // Constructor
+    // ========================================================================
 
     /**
      * Creates a new TestRegister instance.
@@ -79,6 +91,10 @@ public class TestRegister implements RegisterListener {
         this.port = port;
         this.durationMs = (durationMinutes <= 0) ? Long.MAX_VALUE : durationMinutes * 60000L;
     }
+
+    // ========================================================================
+    // RegisterListener Implementation
+    // ========================================================================
 
     /**
      * Called when a registration operation fails.
@@ -127,6 +143,10 @@ public class TestRegister implements RegisterListener {
 
         registrationLatch.countDown();
     }
+
+    // ========================================================================
+    // Public Methods
+    // ========================================================================
 
     /**
      * Starts the service registration and keeps it running.
@@ -301,6 +321,10 @@ public class TestRegister implements RegisterListener {
         System.out.println("Done.");
     }
 
+    // ========================================================================
+    // Private Helper Methods
+    // ========================================================================
+
     /**
      * Closes the server socket quietly, ignoring exceptions.
      */
@@ -397,6 +421,10 @@ public class TestRegister implements RegisterListener {
 
         return normalized;
     }
+
+    // ========================================================================
+    // Main Entry Point
+    // ========================================================================
 
     /**
      * Main entry point for the test registration utility.

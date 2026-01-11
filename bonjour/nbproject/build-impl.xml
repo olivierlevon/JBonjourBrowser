@@ -89,13 +89,13 @@
     <!-- Generate Javadoc -->
     <target name="javadoc" depends="init" description="Generate Javadoc">
         <mkdir dir="${dist.dir}/javadoc"/>
-        <javadoc sourcepath="${src.dir}"
-                 destdir="${dist.dir}/javadoc"
+        <javadoc destdir="${dist.dir}/javadoc"
                  author="true"
                  version="true"
                  use="true"
                  windowtitle="JBonjourBrowser API">
             <classpath refid="compile.classpath"/>
+            <fileset dir="${src.dir}" includes="*.java"/>
             <doctitle><![CDATA[<h1>JBonjourBrowser</h1>]]></doctitle>
             <bottom><![CDATA[<i>Copyright &#169; 2006 Internet Real Time Lab, Columbia University</i>]]></bottom>
         </javadoc>

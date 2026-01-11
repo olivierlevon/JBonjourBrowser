@@ -26,8 +26,11 @@ import java.awt.event.WindowEvent;
  * @author Myounghwan Lee
  * @version 1.0
  */
-public class
-BonjourBrowser extends JFrame {
+public class BonjourBrowser extends JFrame {
+
+    // ========================================================================
+    // Constants
+    // ========================================================================
 
     private static final int WINDOW_WIDTH = 600;
     private static final int WINDOW_HEIGHT = 720;
@@ -36,51 +39,79 @@ BonjourBrowser extends JFrame {
     private static final int BUTTON_TOP_INSET = 20;
     private static final int BUTTON_IPADY = 15;
 
+    // ========================================================================
+    // Instance Fields
+    // ========================================================================
+
     private final JTree tree;
     private final JButton reloadServicesBtn;
     private final JScrollPane treeScrollPane;
     private final BonjourBrowserImpl bonjourBrowserImpl;
     private volatile BonjourBrowserMultiServiceListener multiServiceListener;
 
+    // ========================================================================
+    // Constructor
+    // ========================================================================
+
     /**
      * Constructs a new BonjourBrowser.<br>
      * Sets the GUI property and initializes the browser implementation.
      */
     public BonjourBrowser() {
+        // Initialize UI components
         tree = new JTree();
         reloadServicesBtn = new JButton();
         treeScrollPane = new JScrollPane();
+
+        // Create the browser implementation that manages tree nodes
         bonjourBrowserImpl = new BonjourBrowserImpl(this);
 
+        // Setup UI layout and event handlers
         initComponents();
     }
 
+    // ========================================================================
+    // UI Initialization
+    // ========================================================================
+
     private void initComponents() {
+        // Use GridBagLayout for flexible component positioning
         GridBagLayout gridBagLayout = new GridBagLayout();
         this.getContentPane().setLayout(gridBagLayout);
 
+        // Configure reload button appearance and behavior
         reloadServicesBtn.setBorder(BorderFactory.createRaisedBevelBorder());
         reloadServicesBtn.setText("Reload Services");
         reloadServicesBtn.addActionListener(new ReloadServicesBtnActionListener());
 
+        // Configure window behavior - use custom close handler for cleanup
         this.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         this.addWindowListener(new WindowCloseHandler());
         this.setTitle("Bonjour Service Browser");
 
+        // Configure tree - hide root since we show domains at top level
         tree.setRootVisible(false);
         tree.addTreeExpansionListener(new TreeExpansionHandler());
 
+        // Add tree panel - fills available space (weight 1.0), anchored north, expands both directions
         this.getContentPane().add(treeScrollPane,
                 new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
                         GridBagConstraints.NORTH, GridBagConstraints.BOTH,
                         new Insets(0, 0, 0, 0), TREE_PANEL_IPADX, TREE_PANEL_IPADY));
+
+        // Add reload button - fixed size (weight 0.0), anchored south, stretches horizontally
         this.getContentPane().add(reloadServicesBtn,
                 new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
                         GridBagConstraints.SOUTH, GridBagConstraints.HORIZONTAL,
                         new Insets(BUTTON_TOP_INSET, 0, 0, 0), 0, BUTTON_IPADY));
 
+        // Connect tree to scroll pane
         treeScrollPane.setViewportView(tree);
     }
+
+    // ========================================================================
+    // Public Accessors
+    // ========================================================================
 
     /**
      * Gets the JTree for the browser.
@@ -97,6 +128,10 @@ BonjourBrowser extends JFrame {
     public BonjourBrowserImpl getBonjourBrowserImpl() {
         return bonjourBrowserImpl;
     }
+
+    // ========================================================================
+    // Application Entry Point
+    // ========================================================================
 
     /**
      * Main method of this class.<br>
@@ -127,6 +162,10 @@ BonjourBrowser extends JFrame {
             }
         });
     }
+
+    // ========================================================================
+    // Service Management
+    // ========================================================================
 
     /**
      * Reloads the service browser by stopping any active listeners and
@@ -194,6 +233,10 @@ BonjourBrowser extends JFrame {
         System.out.println("BonjourBrowser cleanup completed");
     }
 
+    // ========================================================================
+    // Event Handling
+    // ========================================================================
+
     /**
      * Handles tree node expansion events to trigger service discovery.
      *
@@ -207,19 +250,29 @@ BonjourBrowser extends JFrame {
      */
     private void handleTreeExpanded(TreeExpansionEvent e) {
         TreePath path = e.getPath();
+
+        // Only react to service type expansions (depth 3: root -> domain -> regType)
+        // Ignore domain expansions (depth 2) and service instance expansions (depth 4+)
         if (path.getPathCount() != 3 || bonjourBrowserImpl.isIgnoreTreeExpansion()) {
             return;
         }
 
+        // Extract domain and service type from tree path
+        // Path structure: [invisible root, domain (e.g. "local."), regType (e.g. "_http._tcp.")]
         DefaultMutableTreeNode domain = (DefaultMutableTreeNode) path.getPathComponent(1);
         DefaultMutableTreeNode regType = (DefaultMutableTreeNode) path.getPathComponent(2);
 
-        // Use toString() directly - handles null userObject safely
+        // Get string values - toString() handles null userObject safely
         String domainStr = domain.toString();
         String regTypeStr = regType.toString();
 
+        // Start browsing for services of this type in this domain
         bonjourBrowserImpl.subscribe(domainStr, regTypeStr);
     }
+
+    // ========================================================================
+    // Inner Classes
+    // ========================================================================
 
     private class ReloadServicesBtnActionListener implements ActionListener {
         @Override

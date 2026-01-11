@@ -1,5 +1,6 @@
-import com.apple.dnssd.*;
 import java.util.Objects;
+
+import com.apple.dnssd.*;
 
 /**
  * Class to encapsulate the structures that Bonjour returns.
@@ -22,19 +23,51 @@ import java.util.Objects;
  */
 public class BonjourBrowserElement {
 
+    // ========================================================================
+    // Constants
+    // ========================================================================
+
     /** Port value indicating the port has not been set (service not yet resolved). */
     public static final int PORT_NOT_SET = -1;
 
+    // ========================================================================
+    // Instance Fields
+    // ========================================================================
+
+    // The DNSSD service handle (browser or resolver) that created this element
     private final DNSSDService service;
+
+    // DNSSD flags (e.g., kDNSServiceFlagsMoreComing, kDNSServiceFlagsAdd)
     private final int flags;
+
+    // Network interface index where service was discovered (0 = any)
     private final int ifIndex;
+
+    // Service port number (-1 if not yet resolved)
     private final int port;
+
+    // Fully qualified service name (unique identifier)
+    // Format: "ServiceName._type._protocol.domain." e.g., "MyPrinter._ipp._tcp.local."
     private final String fullName;
+
+    // Human-readable service name (e.g., "MyPrinter") - null if resolved element
     private final String name;
+
+    // Resolved hostname (e.g., "myprinter.local.") - null if found element
     private final String hostname;
+
+    // Service type (e.g., "_http._tcp.") - null if resolved element
     private final String regType;
+
+    // Service domain (e.g., "local.") - null if resolved element
     private final String domain;
+
+    // TXT record containing service metadata - null if found element
     private final TXTRecord txtRecord;
+
+    // ========================================================================
+    // Constructors
+    // ========================================================================
 
     /**
      * Creates browser elements when a service is found (not yet resolved).
@@ -85,6 +118,10 @@ public class BonjourBrowserElement {
         this.regType = null;
         this.domain = null;
     }
+
+    // ========================================================================
+    // Getters
+    // ========================================================================
 
     /**
      * Gets the DNSSD service (browser or resolver) associated with this element.
@@ -174,6 +211,10 @@ public class BonjourBrowserElement {
         return hostname != null;
     }
 
+    // ========================================================================
+    // Object Methods
+    // ========================================================================
+
     /**
      * Compares this element to another for equality based on fullName only.
      * Two elements are equal if they have the same fully qualified service name,
@@ -184,8 +225,15 @@ public class BonjourBrowserElement {
      */
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        // Same instance check
+        if (this == o) {
+            return true;
+        }
+        // Null and type check
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        // Compare by fullName only - this uniquely identifies a service in mDNS
         BonjourBrowserElement that = (BonjourBrowserElement) o;
         return Objects.equals(fullName, that.fullName);
     }

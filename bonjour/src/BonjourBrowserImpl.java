@@ -11,13 +11,34 @@ import com.apple.dnssd.*;
  */
 public class BonjourBrowserImpl implements BonjourBrowserInterface {
 
+    // ========================================================================
+    // Constants
+    // ========================================================================
+
     private static final String PLACEHOLDER_TEXT = "Place Holder";
 
+    // ========================================================================
+    // Instance Fields
+    // ========================================================================
+
+    // Flag to temporarily disable tree expansion handling during programmatic updates
     private volatile boolean ignoreTreeExpansion = false;
+
+    // Maps fullName -> tree node for quick lookup when resolving services
     private final Map<String, DefaultMutableTreeNode> nodeMap = new ConcurrentHashMap<>();
+
+    // Reference to the main UI frame
     private final BonjourBrowser browser;
+
+    // Listener for individual service discovery and resolution
     private final BonjourBrowserSingleServiceListener singleServiceListener;
+
+    // Active DNSSD browser for the currently expanded service type (null if none)
     private DNSSDService browserForSingleServices;
+
+    // ========================================================================
+    // Constructor
+    // ========================================================================
 
     /**
      * Constructs a new BonjourBrowserImpl.<br>
@@ -29,6 +50,10 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
         this.singleServiceListener = new BonjourBrowserSingleServiceListener(this);
     }
 
+    // ========================================================================
+    // Public Accessors
+    // ========================================================================
+
     /**
      * Checks if tree expansion events should be ignored.
      * @return true if tree expansion should be ignored
@@ -36,6 +61,10 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
     public boolean isIgnoreTreeExpansion() {
         return ignoreTreeExpansion;
     }
+
+    // ========================================================================
+    // Private Helper Methods
+    // ========================================================================
 
     /**
      * Executes a Runnable on the Event Dispatch Thread.
@@ -64,14 +93,20 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
                                                    DefaultMutableTreeNode parent,
                                                    DefaultTreeModel treeModel,
                                                    boolean openUp) {
+        // Check if node already exists to avoid duplicates
         DefaultMutableTreeNode existingNode = findNode(parent, childName);
+
         if (existingNode == null) {
+            // Create new node and insert at end of parent's children
             existingNode = new DefaultMutableTreeNode(childName);
             treeModel.insertNodeInto(existingNode, parent, parent.getChildCount());
+
+            // Auto-scroll to show new node if requested
             if (openUp) {
                 browser.getTree().scrollPathToVisible(new TreePath(existingNode.getPath()));
             }
         }
+
         return existingNode;
     }
 
@@ -110,6 +145,10 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
             treeModel.removeNodeFromParent(node);
         }
     }
+
+    // ========================================================================
+    // BonjourBrowserInterface Implementation - Service Type Operations
+    // ========================================================================
 
     /**
      * Adds a general service type node to the JTree.
@@ -166,6 +205,10 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
         return true;
     }
 
+    // ========================================================================
+    // BonjourBrowserInterface Implementation - Subscription
+    // ========================================================================
+
     /**
      * Subscribes a service provider with the domain to the service type.
      * @param domain service provider domain
@@ -175,22 +218,27 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
     @Override
     public synchronized boolean subscribe(String domain, String regType) {
         try {
-            // Stop previous browser and all active resolvers
+            // Cancel any previous service type subscription
+            // Only one service type can be actively browsed at a time
             if (browserForSingleServices != null) {
                 browserForSingleServices.stop();
                 browserForSingleServices = null;
             }
+
+            // Stop any pending service resolutions from previous subscription
             singleServiceListener.stopAllResolvers();
 
-            // Clear children on EDT
+            // Clear the tree UI on EDT - remove old services from previously expanded type
             runOnEDT(() -> {
                 DefaultMutableTreeNode root = (DefaultMutableTreeNode) browser.getTree().getModel().getRoot();
                 DefaultTreeModel treeModel = (DefaultTreeModel) browser.getTree().getModel();
 
+                // Navigate to the service type node: root -> domain -> regType
                 DefaultMutableTreeNode ndomain = findNode(root, domain);
                 DefaultMutableTreeNode nregtype = findNode(ndomain, regType);
 
-                // Remove all children from the regtype node
+                // Remove all children (old services + placeholder) from the service type node
+                // Collect first, then remove to avoid ConcurrentModificationException
                 if (nregtype != null) {
                     List<DefaultMutableTreeNode> childrenToRemove = new ArrayList<>();
                     for (int i = 0; i < nregtype.getChildCount(); i++) {
@@ -202,6 +250,8 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
                 }
             });
 
+            // Start DNSSD browse for services of this type
+            // Results will arrive via singleServiceListener callbacks
             browserForSingleServices = DNSSD.browse(0, DNSSD.ALL_INTERFACES, regType, domain, singleServiceListener);
 
         } catch (DNSSDException e) {
@@ -212,6 +262,10 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
 
         return true;
     }
+
+    // ========================================================================
+    // BonjourBrowserInterface Implementation - Service Instance Operations
+    // ========================================================================
 
     /**
      * Adds a node about BonjourBrowserElement to the JTree.
@@ -326,6 +380,10 @@ public class BonjourBrowserImpl implements BonjourBrowserInterface {
 
         return true;
     }
+
+    // ========================================================================
+    // Resource Management
+    // ========================================================================
 
     /**
      * Stops the browser for single services and cleans up all resources.
