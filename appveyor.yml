@@ -6,12 +6,42 @@ version: 2.0.0.{build}
 image: Visual Studio 2022
 
 environment:
-  JAVA_HOME: C:\Program Files\Java\jdk21
+  ANT_VERSION: 1.10.14
+  ANT_HOME: C:\ant
 
 install:
+  # Install Java 21 using Chocolatey
+  - choco install temurin21 -y --no-progress
+  - refreshenv
+  # Find and set JAVA_HOME dynamically (Temurin installs to Eclipse Adoptium folder)
+  - ps: |
+      $jdkPath = Get-ChildItem "C:\Program Files\Eclipse Adoptium" -Directory |
+                 Where-Object { $_.Name -like "jdk-21*" } |
+                 Select-Object -First 1 -ExpandProperty FullName
+      if ($jdkPath) {
+        Write-Host "Found JDK at: $jdkPath"
+        [Environment]::SetEnvironmentVariable("JAVA_HOME", $jdkPath, "Process")
+        $env:PATH = "$jdkPath\bin;$env:PATH"
+      } else {
+        Write-Error "JDK 21 not found!"
+        exit 1
+      }
   # Display Java version
   - java -version
   - javac -version
+  # Download and install Apache Ant
+  - ps: |
+      if (!(Test-Path "C:\ant")) {
+        Write-Host "Downloading Apache Ant..."
+        $antUrl = "https://dlcdn.apache.org//ant/binaries/apache-ant-$env:ANT_VERSION-bin.zip"
+        $antZip = "$env:TEMP\ant.zip"
+        Invoke-WebRequest -Uri $antUrl -OutFile $antZip -UseBasicParsing
+        Write-Host "Extracting Apache Ant..."
+        Expand-Archive -Path $antZip -DestinationPath "C:\" -Force
+        Rename-Item "C:\apache-ant-$env:ANT_VERSION" "C:\ant"
+      }
+  - SET PATH=%ANT_HOME%\bin;%PATH%
+  - ant -version
 
 build_script:
   - cd bonjour
@@ -35,9 +65,9 @@ artifacts:
 # No automated tests yet
 test: off
 
-# Cache Ant downloads
+# Cache Ant installation
 cache:
-  - C:\Users\appveyor\.ant
+  - C:\ant
 
 # Notifications (optional)
 notifications:

@@ -22,8 +22,7 @@
     <property name="javac.target" value="21"/>
     <property name="main.class" value="BonjourBrowser"/>
 
-    <!-- Java 25 installation path -->
-    <property name="java25.home" value="C:/Program Files/Java/jdk-25"/>
+    <!-- Use system Java from JAVA_HOME or PATH -->
 
     <!-- Classpath definitions -->
     <path id="compile.classpath">
@@ -55,9 +54,7 @@
                includeantruntime="false"
                debug="true"
                deprecation="false"
-               encoding="UTF-8"
-               fork="true"
-               executable="${java25.home}/bin/javac">
+               encoding="UTF-8">
             <classpath refid="compile.classpath"/>
         </javac>
         <!-- Copy resources -->
@@ -86,14 +83,13 @@
 
     <!-- Run the application -->
     <target name="run" depends="compile" description="Run the application">
-        <java classname="${main.class}" fork="true" jvm="${java25.home}/bin/java">
+        <java classname="${main.class}" fork="true">
             <classpath refid="run.classpath"/>
             <jvmarg value="-Djava.library.path=lib"/>
             <jvmarg value="-Dfile.encoding=UTF-8"/>
             <jvmarg value="-Dsun.stdout.encoding=UTF-8"/>
             <jvmarg value="-Dsun.stderr.encoding=UTF-8"/>
             <jvmarg value="--enable-native-access=ALL-UNNAMED"/>
-            <env key="PATH" path="lib;${env.PATH}"/>
         </java>
     </target>
 
@@ -105,8 +101,7 @@
                  version="true"
                  use="true"
                  windowtitle="JBonjourBrowser API"
-                 executable="${java25.home}/bin/javadoc"
-                 source="21">
+                 source="${javac.source}">
             <classpath refid="compile.classpath"/>
             <fileset dir="${src.dir}" includes="*.java"/>
             <doctitle><![CDATA[<h1>JBonjourBrowser</h1>]]></doctitle>
@@ -125,13 +120,12 @@
 
     <!-- Run TestRegister -->
     <target name="run-test-register" depends="compile" description="Run TestRegister utility">
-        <java classname="TestRegister" fork="true" jvm="${java25.home}/bin/java">
+        <java classname="TestRegister" fork="true">
             <classpath refid="run.classpath"/>
             <jvmarg value="-Djava.library.path=lib"/>
             <jvmarg value="-Dfile.encoding=UTF-8"/>
             <jvmarg value="-Dsun.stdout.encoding=UTF-8"/>
             <jvmarg value="-Dsun.stderr.encoding=UTF-8"/>
-            <env key="PATH" path="lib;${env.PATH}"/>
             <arg line="${test.args}"/>
         </java>
     </target>
