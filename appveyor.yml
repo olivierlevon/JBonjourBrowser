@@ -1,7 +1,7 @@
 # AppVeyor CI configuration for JBonjourBrowser
 # https://www.appveyor.com/docs/appveyor-yml/
 
-version: 2.0.0.{build}
+version: 2.0.0.0b{build}
 
 image: Visual Studio 2022
 
@@ -61,6 +61,7 @@ artifacts:
     name: Dependencies
   - path: bonjour\dist\javadoc
     name: Javadoc
+    type: zip
 
 # No automated tests yet
 test: off
@@ -68,6 +69,17 @@ test: off
 # Cache Ant installation
 cache:
   - C:\ant
+
+# Deploy to GitHub Releases (only on tagged commits)
+deploy:
+  - provider: GitHub
+    auth_token:
+      secure: kv3wgBiiHK/ffSszGHFTfuuQrWarJ3+jZu7EDbl713dZb4uUoU7lBI6VevlDUe8n
+    artifact: JBonjourBrowser,Dependencies,Javadoc
+    draft: false
+    prerelease: false
+    on:
+      APPVEYOR_REPO_TAG: true
 
 # Notifications (optional)
 notifications:
